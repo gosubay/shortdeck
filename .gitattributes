@@ -1,0 +1,5 @@
+# strategy.bin is one byte per action probability. If git ever applied line-ending
+# conversion to it, every 0x0A byte would be rewritten and the bot's strategy would be
+# silently corrupted. Mark it binary explicitly rather than relying on autodetection.
+*.bin binary
+data/strategy.bin binary
