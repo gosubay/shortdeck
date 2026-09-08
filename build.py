@@ -19,6 +19,7 @@ ORDER = [
     "10-core.js",
     "11-game.js",
     "13-solver.js",
+    "15-english.js",
     "14-ui.js",
 ]
 

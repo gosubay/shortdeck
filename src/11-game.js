@@ -299,29 +299,30 @@ function handClass(cards){
   return RANKS[hi]+RANKS[lo]+(suitOf(cards[0])===suitOf(cards[1])?"s":"o");
 }
 
-function botEquity(){
+function botEquity(seat){
   const it = G.street===0 ? 900 : (G.street===3 ? 0 : 700);
   if(G.street===0 && PF_EQ){
-    const e = PF_EQ[handClass(G.hole[1])];
+    const e = PF_EQ[handClass(G.hole[seat])];
     if(e!=null) return e/100;
   }
-  if(G.street===3){
-    /* river: exact-ish, sample villain hands only */
-    return equityMC(G.hole[1], G.board, 600);
-  }
-  return equityMC(G.hole[1], G.board, it);
+  if(G.street===3) return equityMC(G.hole[seat], G.board, 600);
+  return equityMC(G.hole[seat], G.board, it);
 }
 
-function botChoose(){
+/* seat defaults to the bot. useSolver=false forces the heuristic, which is what the
+   strength evaluation in the console uses to play the two engines against each other. */
+function botChoose(seat, useSolver){
+  const s = (seat===undefined) ? 1 : seat;
   /* The solved strategy comes first. It returns null for spots outside the solved tree
-     (unequal stacks that snapped to a different depth, or a state the sampler never
-     reached often enough to export), and then the heuristic below takes over. */
-  const solved = solverChoose(1);
-  if(solved) return solved;
-
-  const s=1, acts=legalActions(s);
+     (a stack size between grid points, or a state the sampler never reached often enough
+     to export), and then the heuristic below takes over. */
+  if(useSolver !== false){
+    const solved = solverChoose(s);
+    if(solved) return solved;
+  }
+  const acts=legalActions(s);
   const toCall = Math.max(0, G.currentBet - G.streetBet[s]);
-  const eq = botEquity();
+  const eq = botEquity(s);
   const potAfterCall = G.pot + toCall;
   const potOdds = toCall>0 ? toCall/potAfterCall : 0;
   const r = Math.random();
@@ -370,7 +371,7 @@ function botTurn(){
   const delay = 380 + Math.random()*520;
   setTimeout(()=>{
     if(!G.live || G.toAct!==1) return;
-    const a = botChoose();
+    const a = botChoose(1);
     act(1, a);
   }, delay);
 }

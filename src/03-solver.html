@@ -29,6 +29,9 @@ row is what the solver actually does, as a percentage.</p>
 <div class="actrow" id="treeActs"></div>
 <div id="strategyView"><p class="muted">Nothing to show yet.</p></div>
 
+<h2>How much of this is actually solved</h2>
+<div id="solverCoverage" class="scrollx"><p class="muted">Loading...</p></div>
+
 <h2>What was actually solved</h2>
 <p>A true GTO solve of 50-ante deep heads-up poker is not possible on a PC &mdash; it is a
 problem the size of a national lab. What this is instead is an <b>abstracted equilibrium</b>:
@@ -45,8 +48,10 @@ properly, and real hands are mapped onto it.</p>
   hands only share a bucket if they have a similar <i>spread</i> of outcomes across future
   cards, not merely the same equity today.</p></div>
  <div class="cardbox"><h4>Bet sizes are restricted</h4>
-  <p style="margin:0">Preflop: limp, min-raise, 50% pot, 100% pot, jam.
-  Postflop: 25%, 50%, 100%, 150% pot, jam. Max 4 bets per street.</p></div>
+  <p style="margin:0">Opening bet keeps the full menu &mdash; preflop: min-raise, 50%,
+  100% pot, jam; postflop: 25%, 50%, 100%, 150% pot, jam. <b>Re-raises are trimmed</b> to
+  50%, 100% and jam, and a street stops at three raises. A full menu at every raise depth
+  makes the tree unsolvable, and nobody is studying third-re-raise sizing.</p></div>
  <div class="cardbox"><h4>Nine stack depths</h4>
   <p style="margin:0">10, 15, 20, 30, 40, 50, 65, 80 and 100 antes, solved separately.
   The top-up and rathole rules keep every real stack inside that range.</p></div>

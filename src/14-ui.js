@@ -58,6 +58,7 @@ function renderTable(){
   $("plateBot").classList.toggle("act", G.live && G.toAct===1);
   $("tableMsg").textContent = G.live ? (G.toAct===0 ? "Your action" : "Bot thinking...")
                                      : (G.lastMsg||"Press Deal to start");
+  updateEngineTag();
   renderHud();
 }
 
@@ -107,6 +108,22 @@ function renderActions(){
     };
     size.appendChild(inp); size.appendChild(go); size.appendChild(hint);
   }
+}
+
+/* Say plainly how much of the bot is the solver and how much is the fallback. The split
+   depends on how long the solve was run, so it is reported live rather than claimed. */
+function updateEngineTag(){
+  const tag = $("engineTag");
+  if(!tag) return;
+  if(!SOLVER.ready){
+    tag.textContent = "Bot engine: heuristic fallback (solver not yet run)";
+    return;
+  }
+  const tot = SOLVER.hits + SOLVER.misses;
+  if(!tot){ tag.textContent = "Bot engine: solved strategy"; return; }
+  const pct = Math.round(SOLVER.hits/tot*100);
+  tag.textContent = `Bot engine: ${pct}% solved strategy, ${100-pct}% heuristic `
+                  + `(${SOLVER.hits} of ${tot} decisions this session)`;
 }
 
 function afterStateChange(){
@@ -217,9 +234,10 @@ function renderStrategyContent(d){
     + `${d.preflop_ranking_samples.toLocaleString()} simulations each. Green = top 15, `
     + `gold = top 40, red = bottom 20.</p>`;
 
-  /* feed the bot its preflop table */
+  /* feed the bot its preflop table, and keep the ranking for the English summary */
   PF_EQ = {};
   for(const r of d.preflop_ranking) PF_EQ[r.hand] = r.eq_vs_random;
+  window.PF_RANKING = d.preflop_ranking;
 }
 
 /* ---------- solver tab: a walkable view of the solved tree ---------- */
@@ -339,6 +357,32 @@ function renderSolverTab(){
     }
     dsel.onchange = ()=>{ VIEW.depth = +dsel.value; VIEW.path=[]; renderTree(); };
   }
+  const cov = $("solverCoverage");
+  if(cov && SOLVER.ready){
+    const D = SOLVER.byDepth[50];
+    const names=["Preflop","Flop","Turn","River"];
+    const have=[0,0,0,0], want=[0,0,0,0];
+    for(const n of D.meta.nodes){
+      if(n.k!=="D") continue;
+      want[n.s] += (n.s===0?81:1296);
+    }
+    for(const [idx,rows] of D.strat) have[D.meta.nodes[idx].s] += rows.size;
+    let h='<table><thead><tr><th>Street</th><th class="num">Situations solved</th>'
+        + '<th class="num">Of possible</th><th class="num">Share</th></tr></thead><tbody>';
+    for(let i=0;i<4;i++){
+      const pct = want[i]? have[i]/want[i]*100 : 0;
+      const col = pct>50?"var(--acc)":(pct>10?"var(--gold)":"var(--bad)");
+      h += `<tr><td>${names[i]}</td><td class="num">${have[i].toLocaleString()}</td>`
+         + `<td class="num muted">${want[i].toLocaleString()}</td>`
+         + `<td class="num" style="color:${col}">${pct.toFixed(1)}%</td></tr>`;
+    }
+    cov.innerHTML = h + '</tbody></table>'
+      + '<p class="muted">At 50A. A situation is only included when the solver reached it '
+      + 'enough times for the answer to mean something; everything else falls back to the '
+      + 'heuristic bot, which is far better than shipping a coin flip. Longer solves fill '
+      + 'this in from the top down - preflop converges first because it has ~2,900 '
+      + 'situations against roughly 1.58 million after the flop.</p>';
+  }
   $("btnTreeBack").onclick = ()=>{ if(VIEW.path.length>1){ VIEW.path.pop(); renderTree(); } };
   $("btnTreeRoot").onclick = ()=>{ VIEW.path=[]; renderTree(); };
   renderTree();
@@ -355,6 +399,7 @@ async function boot(){
     await loadSolver();
   }catch(e){ console.warn("solved strategy not loaded:", e); }
   renderSolverTab();
+  renderSolverEnglish(window.PF_RANKING);
   afterStateChange();
   logLine("Welcome. Both players ante 1A, the button posts an extra 1A. "
         + "The button acts LAST on every street.","sys");

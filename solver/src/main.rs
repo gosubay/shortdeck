@@ -20,7 +20,8 @@ use tree::{Act, Kind, Tree};
 
 const DEPTHS: [i32; 9] = [10, 15, 20, 30, 40, 50, 65, 80, 100];
 
-struct Args { iters: u64, depths: Vec<i32>, out: String, min_freq: f64, dump: u64 }
+struct Args { iters: u64, depths: Vec<i32>, out: String, min_freq: f64, dump: u64,
+              min_visits: f32 }
 
 /// Writes sample hand/board -> card-state mappings so the browser's port of the
 /// abstraction can be checked against this one card for card. If these two ever disagree,
@@ -49,7 +50,8 @@ fn dump_states(n: u64) {
 
 fn parse_args() -> Args {
     let mut a = Args { iters: 4_000_000, depths: DEPTHS.to_vec(),
-                       out: "../data/strategy.json".to_string(), min_freq: 2e-6, dump: 0 };
+                       out: "../data/strategy.json".to_string(), min_freq: 2e-6, dump: 0,
+                       min_visits: 300.0 };
     let v: Vec<String> = std::env::args().skip(1).collect();
     let mut i = 0;
     while i < v.len() {
@@ -60,6 +62,7 @@ fn parse_args() -> Args {
             "--out" => { i += 1; a.out = v[i].clone(); }
             "--min-freq" => { i += 1; a.min_freq = v[i].parse().unwrap(); }
             "--dump-states" => { i += 1; a.dump = v[i].parse().unwrap(); }
+            "--min-visits" => { i += 1; a.min_visits = v[i].parse().unwrap(); }
             other => { eprintln!("unknown argument: {}", other); std::process::exit(2); }
         }
         i += 1;
@@ -135,9 +138,12 @@ fn main() {
     // BINARY file: one byte per action probability. As JSON the same data runs well past
     // 100 MB at high iteration counts, which no browser should be asked to download.
     println!("exporting...");
-    let min_visits = (args.iters as f64 * args.min_freq).max(4.0) as f32;
-    println!("keeping states reached at least {:.0} times (1 in {:.0} hands)",
-             min_visits, 1.0 / args.min_freq);
+    // An infoset visited a handful of times has a NOISE strategy, not a learned one, and
+    // shipping it makes the bot play that noise with total confidence. Anything below the
+    // floor is left out entirely so the browser falls back to the heuristic, which is a
+    // far better opponent than a coin flip. Raise iterations, not this threshold.
+    let min_visits = ((args.iters as f64 * args.min_freq) as f32).max(args.min_visits);
+    println!("keeping only states reached at least {:.0} times", min_visits);
 
     let mut bin: Vec<u8> = Vec::with_capacity(64 << 20);
     bin.extend_from_slice(b"SDS1");

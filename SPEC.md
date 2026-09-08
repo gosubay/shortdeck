@@ -179,6 +179,36 @@ survives. This is a standard, disclosed abstraction.
   against it by `verifySolverAbstraction()`. **If these ever disagree the bot reads the
   wrong row and plays nonsense, silently — so this check must stay.**
 
+### Iteration counts: the thing that actually determines quality
+**At 50A there are ~1.58 million infosets per stack depth.** This dominates everything.
+
+A 300,000-iteration run gives **0.19 visits per infoset**. The resulting strategy is not
+"roughly right" — it is noise. Measured: that bot lost **75 antes per 100 hands** to the
+much simpler heuristic bot, and 13% of its exported postflop rows were literally uniform.
+
+Two rules follow, and neither is optional:
+
+1. **Never export an undertrained row.** `--min-visits` (default **300**) drops any
+   infoset the sampler did not reach enough times. A missing row makes the browser fall
+   back to the heuristic, which is a far better opponent than a coin flip. The floor is
+   not the quality dial — iterations are. Do not lower it to "get more coverage".
+2. **Iterations needed, per depth:**
+
+| Iterations | Visits per infoset | What is actually solved |
+|---|---|---|
+| 300k | 0.2 | nothing; noise |
+| 20M | ~13 | preflop only, weakly |
+| 50M | ~32 | preflop well; little postflop |
+| 1B | ~630 | preflop + common postflop lines |
+| 5B | ~3,200 | the agreed 72-hour target |
+
+Timing on the 7800X3D: 300k iterations across all nine depths (parallel) = **14 seconds**,
+and it scales linearly. So 5 billion is roughly 65 hours.
+
+Preflop converges enormously faster than postflop because it has only ~2,900 infosets per
+depth against ~1.58M. This is why a partial solve still produces a genuinely strong
+preflop strategy while postflop correctly falls back to the heuristic.
+
 ### Matching a live hand to a solved node
 1. Depth = nearest grid point to the effective stack **as the hand started**
    (`G.effStart`). Using the live `eff()` is wrong: it collapses to 0 once someone is
