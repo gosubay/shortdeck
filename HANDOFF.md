@@ -28,25 +28,39 @@ A four-tab web app for heads-up Short Deck (6+) hold'em:
 | Teaching content (equities, outs, 81-hand ranking) | **Done, computed** |
 | Rust CFR solver | **Done, runs, exports** |
 | Browser plays the solved strategy | **Done — 99.4% of bot decisions** |
-| Long high-iteration solve | **Not yet run** — see "The one thing left" |
+| 50M-iteration solve, shipped and live | **Done** |
+| Long (3 billion) solve | **Not yet run** — see "The one thing left" |
 
 ---
 
 ## The one thing left
 
-The shipped `data/strategy.bin` comes from a **20 million iteration** run (~15 minutes).
-That is a real solve and the bot plays it, but it is not converged. Galvin agreed a
-**~72 hour** compute budget. To use it:
+The shipped `data/strategy.bin` is a **50 million iteration** run (66 minutes, measured).
+Preflop is genuinely converged at that count (~17,000 visits per situation). Postflop is
+not, and the app says so rather than pretending otherwise.
 
-```bash
-cd C:\Claude\Code\shortdeck\solver
-cargo run --release -- --iters 3000000000
-```
+Galvin agreed a **~72 hour** budget. To use it, he double-clicks:
 
-All nine depths run in parallel, one core each. Then commit `data/strategy.json` and
-`data/strategy.bin`. Nothing else changes — the site picks them up automatically.
+    solver\RUN-LONG-SOLVE.bat
 
-Timing is linear: 300k iterations per depth = 14s on the 7800X3D. So 3 billion ≈ 39 hours.
+which runs 3 billion hands per depth — **about two days** on this machine. Then commit
+`data/strategy.json` and `data/strategy.bin`; nothing else changes, the site picks them up.
+
+**Do not estimate solve time by scaling small runs linearly.** Nine threads on eight cores
+contend for memory bandwidth. Measured at 50M: 10A = 286s, 20A = 827s, 100A = 3,939s.
+
+### Measured bot strength (25,000 hands vs the heuristic, 27,000-hand control)
+
+    solver vs heuristic   +30.46 A/100  (se 13.52)
+    control               -8.24  A/100  (se 11.01)   <- should be ~0, and is
+    difference            z = 2.2
+
+Per-hand standard deviation is **21 antes**, so any win-rate claim needs a very large
+sample. The direction is solid; treat the magnitude as approximate. The previous
+undertrained export scored -75.45 A/100 on the same test.
+
+Also still outstanding from the agreed scope: the **~40 card-perfect benchmark flop
+solves** for the Strategy tab (the "High + teaching solves" tier). Not started.
 
 Also still outstanding from the agreed scope: the **~40 card-perfect benchmark flop
 solves** for the Strategy tab (the "High + teaching solves" tier). Not started.
