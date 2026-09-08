@@ -89,15 +89,20 @@ function renderActions(){
     const hint = el("span","muted","");
     const upd = ()=>{
       const v=parseFloat(inp.value);
-      if(isNaN(v)) { hint.textContent=`any amount ${minTo}A - ${maxTo}A`; return; }
-      const f = snapFrac(v, 0);
-      hint.textContent = `→ treated as ${f==="jam"?"a jam":Math.round(f*100)+"% pot"} by the bot`;
+      if(isNaN(v)) { hint.textContent=`any amount ${minTo}A - ${maxTo}A, in 0.5A steps`; return; }
+      const snapped = A(Math.round(T(v)/5)*5);
+      const f = snapFrac(snapped, 0);
+      hint.textContent = `bet ${snapped.toFixed(1)}A → the bot reads it as `
+        + `${f==="jam"?"a jam":Math.round(f*100)+"% pot"}`;
     };
     inp.oninput = upd; upd();
     go.onclick = ()=>{
       let v = parseFloat(inp.value);
       if(isNaN(v)) return;
-      v = Math.max(minTo, Math.min(maxTo, round1(v)));
+      /* snap to the 0.5A grid: a real table has no 4.37-ante bet, and staying on the
+         grid is what keeps the solved strategy reachable for the rest of the hand */
+      v = A(Math.round(T(v)/5)*5);
+      v = Math.max(minTo, Math.min(maxTo, v));
       act(0, {t:"raise", to:v, custom:true, label:"custom"});
     };
     size.appendChild(inp); size.appendChild(go); size.appendChild(hint);
@@ -217,13 +222,107 @@ function renderStrategyContent(d){
   for(const r of d.preflop_ranking) PF_EQ[r.hand] = r.eq_vs_random;
 }
 
-/* ---------- solver tab ---------- */
+/* ---------- solver tab: a walkable view of the solved tree ---------- */
+const VIEW = { depth: 50, path: [] };     // path = list of node indices, [0] is the root
+
+function curDepthData(){ return SOLVER.ready ? SOLVER.byDepth[VIEW.depth] : null; }
+
+function actLabel(a, node){
+  const potA = (node.c[0] + node.c[1]) / 10;
+  switch(a[0]){
+    case "f": return "Fold";
+    case "x": return "Check";
+    case "c": return "Call";
+    case "r": {
+      const to = a[1] / 10, tag = a[2];
+      if(tag === -2) return `Jam ${to.toFixed(1)}A`;
+      if(tag === -1) return `Min-raise to ${to.toFixed(1)}A`;
+      return `${Math.round(tag*100)}% pot (to ${to.toFixed(1)}A)`;
+    }
+  }
+  return "?";
+}
+
+function renderTree(){
+  const D = curDepthData();
+  const path = $("treePath"), here = $("treeHere"), acts = $("treeActs"),
+        view = $("strategyView");
+  if(!D){ path.textContent=""; here.textContent=""; acts.innerHTML="";
+          view.innerHTML='<p class="muted">Nothing to show yet.</p>'; return; }
+  if(!VIEW.path.length) VIEW.path = [D.meta.root];
+
+  const idx = VIEW.path[VIEW.path.length-1];
+  const node = D.meta.nodes[idx];
+
+  path.textContent = "Line: " + (VIEW.path.length===1 ? "start of hand"
+    : VIEW.path.slice(0,-1).map((p,i)=>{
+        const parent = D.meta.nodes[p];
+        const child = VIEW.path[i+1];
+        const k = parent.kids.indexOf(child);
+        return k>=0 ? actLabel(parent.a[k], parent) : "?";
+      }).join("  →  "));
+
+  if(node.k !== "D"){
+    here.innerHTML = node.k==="S" ? "<b>Showdown.</b> The hand is over."
+                                  : "<b>Hand over</b> - someone folded.";
+    acts.innerHTML = ""; view.innerHTML = "";
+    return;
+  }
+
+  const pot = (node.c[0]+node.c[1])/10;
+  const seat = node.p===0 ? "Button (acts last)" : "Non-button (acts first)";
+  const streetName = ["Preflop","Flop","Turn","River"][node.s];
+  const toCall = (Math.max(node.st[4],node.st[5]) - node.st[node.p===0?4:5])/10;
+  here.innerHTML = `<b>${streetName}</b> &nbsp;|&nbsp; pot <b>${pot.toFixed(1)}A</b>`
+    + ` &nbsp;|&nbsp; to act: <b>${seat}</b>`
+    + (toCall>0 ? ` &nbsp;|&nbsp; facing a bet of <b>${toCall.toFixed(1)}A</b>` : "")
+    + ` &nbsp;|&nbsp; effective stack <b>${VIEW.depth}A</b>`;
+
+  acts.innerHTML = "";
+  node.a.forEach((a,i)=>{
+    const b = el("button","btn sm", actLabel(a,node));
+    b.onclick = ()=>{ VIEW.path.push(node.kids[i]); renderTree(); };
+    acts.appendChild(b);
+  });
+
+  /* the strategy table */
+  const rows = D.strat.get(idx);
+  if(!rows || !rows.size){
+    view.innerHTML = '<p class="muted">This spot was reached too rarely in the solve to '
+      + 'be exported. Try a more common line.</p>';
+    return;
+  }
+  const hdr = node.a.map(a=>`<th class="num">${actLabel(a,node)}</th>`).join("");
+  let body = "";
+  const entries = [...rows.entries()].sort((x,y)=>x[0]-y[0]);
+  for(const [st, probs] of entries){
+    let tot=0; for(const v of probs) tot+=v;
+    if(tot<=0) continue;
+    const label = node.s===0
+      ? (SOLVER.tree.preflopClasses[st] || ("class "+st))
+      : `${SOLVER.tree.bucketNames[st % SOLVER.tree.nBucket]}`
+        + ` <span class="muted">(${SOLVER.tree.textureNames[Math.floor(st/SOLVER.tree.nBucket)]})</span>`;
+    const cells = [...probs].map(v=>{
+      const pct = v/tot*100;
+      const col = pct>=60?"var(--acc)":(pct>=25?"var(--gold)":(pct>0?"var(--dim)":"var(--dim2)"));
+      return `<td class="num" style="color:${col}">${pct>=0.5?pct.toFixed(0)+"%":"·"}</td>`;
+    }).join("");
+    body += `<tr><td>${label}</td>${cells}</tr>`;
+  }
+  view.innerHTML = `<div class="scrollx"><table><thead><tr>`
+    + `<th>${node.s===0?"Starting hand":"Hand class"}</th>${hdr}</tr></thead>`
+    + `<tbody>${body}</tbody></table></div>`
+    + `<p class="muted">${entries.length} rows. Postflop rows are bucket names, not exact `
+    + `hands - that is the abstraction described below.</p>`;
+}
+
 function renderSolverTab(){
   const st=$("solverStatus"), meta=$("solverMeta");
-  if(SOLVED){
+  if(SOLVER.ready){
+    const t = SOLVER.tree;
     st.className="pill ok"; st.textContent="solved strategy loaded";
-    meta.textContent = ` · ${SOLVED.iterations?.toLocaleString?.()||"?"} iterations`
-                     + ` · generated ${SOLVED.generated||"?"}`;
+    meta.textContent = ` · ${(t.iterations||0).toLocaleString()} iterations per depth`
+                     + ` · generated ${t.generated||"?"}`;
     $("solverMissing").style.display="none";
     $("engineTag").textContent = "Bot engine: solved strategy";
   } else {
@@ -231,9 +330,6 @@ function renderSolverTab(){
     meta.textContent = " · Play tab is using the heuristic fallback bot";
     $("solverMissing").style.display="";
     $("engineTag").textContent = "Bot engine: heuristic fallback (solver not yet run)";
-    $("strategyView").innerHTML =
-      '<p class="muted">Once <code>data/strategy.json</code> exists, this shows the solved '
-      + 'action frequencies for every starting hand at every stack depth.</p>';
   }
   const dsel=$("selDepth");
   if(dsel && !dsel.options.length){
@@ -241,13 +337,11 @@ function renderSolverTab(){
       const o=el("option"); o.value=d; o.textContent=d+"A"; if(d===50) o.selected=true;
       dsel.appendChild(o);
     }
+    dsel.onchange = ()=>{ VIEW.depth = +dsel.value; VIEW.path=[]; renderTree(); };
   }
-  const ssel=$("selSpot");
-  if(ssel && !ssel.options.length){
-    for(const s of ["Preflop: first in","Preflop: facing a raise","Flop","Turn","River"]){
-      const o=el("option"); o.textContent=s; ssel.appendChild(o);
-    }
-  }
+  $("btnTreeBack").onclick = ()=>{ if(VIEW.path.length>1){ VIEW.path.pop(); renderTree(); } };
+  $("btnTreeRoot").onclick = ()=>{ VIEW.path=[]; renderTree(); };
+  renderTree();
 }
 
 /* ---------- boot ---------- */
@@ -258,9 +352,8 @@ async function boot(){
     if(r.ok) renderStrategyContent(await r.json());
   }catch(e){ console.warn("teaching content not loaded", e); }
   try{
-    const r = await fetch("data/strategy.json", {cache:"no-cache"});
-    if(r.ok) SOLVED = await r.json();
-  }catch(e){ /* expected until the solver has run */ }
+    await loadSolver();
+  }catch(e){ console.warn("solved strategy not loaded:", e); }
   renderSolverTab();
   afterStateChange();
   logLine("Welcome. Both players ante 1A, the button posts an extra 1A. "

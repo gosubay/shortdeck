@@ -11,7 +11,8 @@ const ANTE = 1, BUTTON_ANTE = 1;              // button posts ANTE + BUTTON_ANTE
 const PF_FRACS = [0.5, 1.0];                  // preflop pot-relative raises
 const PF_MINRAISE_LABEL = "Min 4A";
 const POST_FRACS = [0.25, 0.5, 1.0, 1.5];     // postflop pot-relative bets/raises
-const MAX_BETS_PER_STREET = 4;                // then jam only
+const RERAISE_FRACS = [0.5, 1.0];             // menu once someone has already raised
+const MAX_RAISES = 3;                         // matches MAX_RAISES in solver/src/tree.rs
 const STREETS = ["Preflop","Flop","Turn","River"];
 
 const G = {
@@ -23,8 +24,11 @@ const G = {
   committed:[0,0],      // total put in this hand by each seat
   streetBet:[0,0],      // put in on the current street
   pot:0, currentBet:0, minRaiseInc:0, betsThisStreet:0,
+  /* last aggressor in SOLVER seat terms (0 = button, 1 = non-button, -1 = nobody).
+     Part of the key used to find the matching node in the solved tree. */
+  lastAgg:0,
   toAct:0, actorsToAct:0, folded:-1, allIn:[false,false],
-  showdownDone:false, lastMsg:"", handLog:[],
+  showdownDone:false, lastMsg:"", handLog:[], effStart:START_STACK,
   autoDeal:false, revealBot:false
 };
 
@@ -85,6 +89,11 @@ function newHand(){
   const notes = maintainStacks();
   G.live=true; G.street=0; G.board=[]; G.folded=-1; G.showdownDone=false;
   G.allIn=[false,false]; G.betsThisStreet=0; G.revealBot=false;
+  G.lastAgg=0;            // the button's extra ante is the opening aggression
+  /* Effective stack as it was BEFORE any money went in. The solved trees are indexed by
+     the starting effective stack; eff() collapses to 0 the moment someone is all in, so
+     using it mid-hand sends the lookup to the wrong tree entirely. */
+  G.effStart = Math.min(G.stacks[0], G.stacks[1]);
   G.deck = shuffle(freshDeck());
   G.hole=[[G.deck.pop(),G.deck.pop()],[G.deck.pop(),G.deck.pop()]];
   G.committed=[0,0]; G.streetBet=[0,0]; G.pot=0;
@@ -119,40 +128,46 @@ function legalActions(s){
   if(toCall === 0) acts.push({t:"check", label:"Check", amt:0});
   else acts.push({t:"call", label:`Call ${fmtA(Math.min(toCall,stack))}`, amt:Math.min(toCall,stack)});
 
-  /* can we put in more? */
+  /* Can we put in more? This block mirrors solver/src/tree.rs EXACTLY - same menu, same
+     0.5A quantisation, same raise cap. If it drifts, the live game can reach betting
+     states that do not exist in the solved tree and the bot silently loses its strategy. */
   const oppMax = G.stacks[other(s)] + G.streetBet[other(s)];   // most opponent can match
-  const myMaxTo = Math.min(stack + G.streetBet[s], oppMax);    // cap: no bet bigger than opponent can call
-  if(myMaxTo > G.currentBet + 1e-9 && G.stacks[s] > toCall + 1e-9){
-    const potAfterCall = G.pot + toCall;
-    const fracs = G.street===0 ? PF_FRACS : POST_FRACS;
+  const myMaxTo = Math.min(stack + G.streetBet[s], oppMax);    // never bet more than they can call
+  if(myMaxTo > G.currentBet + 1e-9 && G.stacks[s] > toCall + 1e-9
+     && G.betsThisStreet < MAX_RAISES){
+    const curT = T(G.currentBet), potACT = T(G.pot + toCall);
+    const minToT = curT + T(G.minRaiseInc);
+    const maxToT = T(myMaxTo);
     const seen = new Set();
-    const capReached = G.betsThisStreet >= MAX_BETS_PER_STREET;
+    const first = G.betsThisStreet === 0;
+    const fracs = first ? (G.street===0 ? PF_FRACS : POST_FRACS) : RERAISE_FRACS;
 
-    if(!capReached){
-      if(G.street===0 && toCall>0){
-        /* explicit min-raise button preflop */
-        const to = G.currentBet + G.minRaiseInc;
-        if(to < myMaxTo-1e-9){ seen.add(round1(to));
-          acts.push({t:"raise", to:round1(to), label:`${PF_MINRAISE_LABEL}`}); }
-      }
-      for(const f of fracs){
-        let to = G.currentBet + f*potAfterCall;
-        to = round1(to);
-        const minTo = G.currentBet + Math.max(G.minRaiseInc, G.street===0?0:1);
-        if(to < minTo) to = round1(minTo);
-        if(to >= myMaxTo-1e-9) continue;          // that is a jam, listed separately
-        if(seen.has(to)) continue;
-        seen.add(to);
-        acts.push({t:"raise", to, frac:f,
-                   label:`${toCall>0?"Raise":"Bet"} ${Math.round(f*100)}% (${fmtA(to-G.streetBet[s])})`});
-      }
+    if(first && G.street===0 && toCall>0 && minToT < maxToT){
+      seen.add(minToT);
+      acts.push({t:"raise", to:A(minToT), label:PF_MINRAISE_LABEL});
     }
-    acts.push({t:"raise", to:round1(myMaxTo), jam:true,
-               label:`Jam ${fmtA(Math.min(stack, myMaxTo-G.streetBet[s]))}`});
+    for(const f of fracs){
+      let toT = quantRaise(curT, f, potACT);
+      if(toT < minToT) toT = minToT;
+      if(toT >= maxToT || seen.has(toT)) continue;   // at or past max is a jam
+      seen.add(toT);
+      acts.push({t:"raise", to:A(toT), frac:f,
+                 label:`${toCall>0?"Raise":"Bet"} ${Math.round(f*100)}% (${fmtA(A(toT)-G.streetBet[s])})`});
+    }
+    acts.push({t:"raise", to:A(maxToT), jam:true,
+               label:`Jam ${fmtA(Math.min(stack, A(maxToT)-G.streetBet[s]))}`});
   }
   return acts;
 }
 const round1 = v => Math.round(v*10)/10;
+/* money helpers: the solver works in TENTHS of an ante and rounds every bet target to
+   0.5A. Doing the arithmetic the same way here is what keeps the two in step. */
+const T = v => Math.round(v*10);
+const A = t => t/10;
+const quantRaise = (curT, f, potACT) => {
+  const to = curT + Math.trunc(f*potACT);      // Rust: (f * pot_after_call as f32) as i32
+  return Math.floor((to + 2)/5)*5;             // Rust: ((to + QUANT/2) / QUANT) * QUANT
+};
 
 /* snap an arbitrary raise-to onto the abstraction (geometric midpoints, SPEC.md) */
 function snapFrac(rawTo, s){
@@ -160,7 +175,8 @@ function snapFrac(rawTo, s){
   const potAfterCall = G.pot + toCall;
   if(potAfterCall<=0) return "jam";
   const f = (rawTo - G.currentBet)/potAfterCall;
-  const fracs = G.street===0 ? PF_FRACS : POST_FRACS;
+  const fracs = G.betsThisStreet===0 ? (G.street===0 ? PF_FRACS : POST_FRACS)
+                                    : RERAISE_FRACS;
   const oppMax = G.stacks[other(s)] + G.streetBet[other(s)];
   const jamTo = Math.min(G.stacks[s]+G.streetBet[s], oppMax);
   const jamF = (jamTo - G.currentBet)/potAfterCall;
@@ -192,6 +208,7 @@ function act(s, a){
     G.minRaiseInc = Math.max(G.minRaiseInc, inc);
     G.currentBet = G.streetBet[s];
     G.betsThisStreet++;
+    G.lastAgg = solverSeat(s);
     const verb = toCall>0 ? "raise to" : "bet";
     logLine(`${who} ${verb} ${fmtA(G.currentBet)}${G.allIn[s]?" (all in)":""}.`, cls);
     G.actorsToAct = 1;                      // opponent must respond
@@ -212,6 +229,7 @@ function nextStreet(){
   if(G.street>=3){ showdown(); return; }
   G.street++;
   G.streetBet=[0,0]; G.currentBet=0; G.minRaiseInc=1; G.betsThisStreet=0;
+  G.lastAgg=-1;
   const n = G.street===1?3:1;
   for(let i=0;i<n;i++) G.board.push(G.deck.pop());
   logLine(`${STREETS[G.street]}: ${G.board.map(cardStr).join(" ")} - pot ${fmtA(G.pot)}`, "sys");
@@ -295,6 +313,12 @@ function botEquity(){
 }
 
 function botChoose(){
+  /* The solved strategy comes first. It returns null for spots outside the solved tree
+     (unequal stacks that snapped to a different depth, or a state the sampler never
+     reached often enough to export), and then the heuristic below takes over. */
+  const solved = solverChoose(1);
+  if(solved) return solved;
+
   const s=1, acts=legalActions(s);
   const toCall = Math.max(0, G.currentBet - G.streetBet[s]);
   const eq = botEquity();

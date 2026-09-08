@@ -16,17 +16,17 @@
 </div>
 
 <h2>Browse the strategy</h2>
+<p class="muted">Pick a stack depth, then click actions to walk down the game tree. Every
+row is what the solver actually does, as a percentage.</p>
 <div class="sizerow">
  <label class="muted">Effective stack
   <select id="selDepth"></select></label>
- <label class="muted">Position
-  <select id="selPos">
-   <option value="btn">Button (posts 2A, acts last)</option>
-   <option value="bb">Non-button (posts 1A, acts first)</option>
-  </select></label>
- <label class="muted">Spot
-  <select id="selSpot"></select></label>
+ <button class="btn sm ghost" id="btnTreeBack">&larr; Back</button>
+ <button class="btn sm ghost" id="btnTreeRoot">Reset to start of hand</button>
 </div>
+<div id="treePath" class="muted" style="margin:.4em 0"></div>
+<div id="treeHere" class="note" style="margin:.6em 0"></div>
+<div class="actrow" id="treeActs"></div>
 <div id="strategyView"><p class="muted">Nothing to show yet.</p></div>
 
 <h2>What was actually solved</h2>
@@ -75,13 +75,23 @@ needs nothing installed.</p>
 <ol>
  <li>Install Rust once (Windows PowerShell):<br>
      <code>winget install Rustlang.Rustup</code><br>
-     then close and reopen PowerShell.</li>
+     then close and reopen PowerShell. Nothing else is needed &mdash; the project pins a
+     toolchain that does not require Visual Studio.</li>
  <li>Go to the solver folder:<br><code>cd C:\Claude\Code\shortdeck\solver</code></li>
  <li>Build and run:<br><code>cargo run --release</code></li>
- <li>It prints progress and writes <code>..\data\strategy.json</code> when done.
-     Commit and push that file and the website picks it up.</li>
+ <li>It writes <code>..\data\strategy.json</code> and <code>..\data\strategy.bin</code>.
+     Commit and push those two and the website picks them up.</li>
 </ol>
-<p class="muted">The run is long by design. Leave it going; it saves checkpoints as it
-goes, so stopping it does not lose the work.</p>
+<p>Useful switches:</p>
+<ul>
+ <li><code>--iters 100000000</code> &mdash; how many hands to learn from, per stack depth.
+     More is better and slower; it is the main quality dial.</li>
+ <li><code>--depths 50</code> &mdash; solve one stack depth only, for a quick test.</li>
+ <li><code>--dump-states 4000</code> &mdash; regenerate the file that proves the website's
+     hand-grouping matches the solver's.</li>
+</ul>
+<p class="muted">All nine depths run at once, one CPU core each. Roughly 300,000 hands per
+depth take 14 seconds on an 8-core machine, and it scales linearly from there &mdash; so
+20 million takes about 15 minutes and a billion takes about half a day.</p>
 
 </section>

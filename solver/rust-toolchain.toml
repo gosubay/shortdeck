@@ -1,0 +1,6 @@
+# Pinned to the GNU toolchain on purpose.
+# Rust's default Windows toolchain (msvc) needs the multi-gigabyte Visual Studio C++
+# build tools. The gnu toolchain links with bundled components and needs nothing else
+# installed, so `cargo run --release` works right after `winget install Rustlang.Rustup`.
+[toolchain]
+channel = "stable-x86_64-pc-windows-gnu"

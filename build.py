@@ -18,7 +18,8 @@ ORDER = [
     "@</main>",          # literal, closes the <main> opened in 02-play
     "10-core.js",
     "11-game.js",
-    "12-ui.js",
+    "13-solver.js",
+    "14-ui.js",
 ]
 
 BANNER = ("<!-- BUILT FILE - do not edit by hand.\n"

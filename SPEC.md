@@ -81,9 +81,32 @@ multiplicative, so 30% is closer in character to 25% than 45% is to 50%):
 The player's ACTUAL bet size is what goes in the pot — snapping only affects which
 strategy row the bot looks up.
 
-### Raise cap
-Max 4 bets per street (bet, raise, re-raise, re-re-raise), after which the only
-raise option is Jam. Prevents tree explosion.
+### Raise cap and the re-raise menu — AS BUILT (differs from the original request)
+**Galvin asked for all five postflop sizes at every decision. That is kept for the
+OPENING bet on each street. It is NOT kept for re-raises.** As built:
+
+| Situation | Sizes available |
+|---|---|
+| Opening bet, preflop | min-raise (4A), 50% pot, 100% pot, jam |
+| Opening bet, postflop | 25%, 50%, 100%, 150% pot, jam |
+| Any raise after that | 50% pot, 100% pot, jam |
+| After 3 raises on a street | fold or call only |
+
+**Why:** with the full menu at every raise depth the tree grows past what can be solved
+or downloaded. Sizing knowledge that a player actually uses lives in the opening bet;
+almost nobody is studying third-re-raise sizing. This is a single table at the top of
+`solver/src/tree.rs` (`PF_OPEN`, `POST_OPEN`, `RERAISE`, `MAX_RAISES`) and the matching
+constants in `src/11-game.js`, so it can be widened later in one place.
+
+**The live game and the solver MUST agree on this menu exactly.** If they drift, the
+player can reach betting states that do not exist in the solved tree and the bot silently
+falls back to heuristics. `src/11-game.js legalActions()` is a deliberate mirror of
+`solver/src/tree.rs build_node()`.
+
+### All money sits on a 0.5A grid
+Every bet target is rounded to the nearest 0.5 antes (`QUANT` in the solver, `quantRaise`
+in the JS). Free-form human bets are rounded to 0.5A too. This keeps the live game's pot
+and stack numbers identical to the solver's, which is what makes strategy lookup work.
 
 ## 4. Solver design (CONFIRMED so far)
 
@@ -100,18 +123,72 @@ Bucketing is mandatory, not a shortcut: a card-perfect postflop strategy for one
 depth is ~140 GB (573 flop classes x ~100k decision points x 630 combos). It cannot be
 downloaded by a browser. Bucketing gets it to tens of MB.
 
-- **Potential-aware buckets**: two hands share a bucket only if they have a similar
-  *distribution* of equity across future runouts, not merely the same current equity.
-  (Stops a bare flush draw being lumped with middle pair.)
-- Target: **~60 board texture classes, ~128 buckets per street**, all 9 stack depths.
-- Fidelity tier chosen: **High + teaching solves (~72h budget)**.
-  Plus card-perfect (no card abstraction) solves on ~40 benchmark flops, used to
-  generate accurate Strategy-tab content and to validate the bucketed bot.
+**AS BUILT** (`solver/src/abstraction.rs`): buckets are **hand-crafted and
+potential-aware**, not learned by k-means.
 
-### Implementation (CONFIRMED)
-- Solver core in **Rust** (install once: `winget install Rustlang.Rustup`), run with
-  `cargo run --release`. ~10-30x faster than Python, which buys bucket count.
+```
+bucket  = category(9) x strength(4) x flush-draw(2) x straight-draw(3) = 216
+texture = suit pattern(3) x paired(2)                                  = 6
+card state = texture * 216 + bucket                                    = 1,296
+```
+
+- Draws are explicit features, so a flush draw and a middle pair with identical raw
+  equity can never collapse together — which is the exact failure "potential-aware"
+  exists to prevent.
+- **Every bucket has a name** ("top pair + open-ender", "overpair + flush draw"). This
+  is what makes the Strategy tab possible: the solver can explain itself in English
+  instead of citing "cluster 47". This was the deciding argument over k-means.
+- River has no draws, so fd/sd collapse to 0 there automatically.
+
+### Betting-tree abstraction — THE KEY TRICK (as built)
+Subtrees are memoised on the betting **state** (street, each player's committed chips,
+whose turn, raises so far, who was last aggressive, who still owes an action, minimum
+legal raise) rather than on the full action history. Two routes to the same pot and
+stacks share one subtree.
+
+Without this a four-street tree is exponential and unsolvable. With it:
+
+| Depth | Nodes | Decision nodes |
+|---|---|---|
+| 10A | 596 | 244 |
+| 50A | 3,212 | 1,256 |
+| 100A | 4,915 | 1,916 |
+
+**The cost:** the solver cannot tell "bet-bet-call" from "check-raise-call" when both
+leave the same pot and stacks. The last aggressor IS kept, so most of the distinction
+survives. This is a standard, disclosed abstraction.
+
+### Implementation (AS BUILT)
+- Solver core in **Rust**, external-sampling MCCFR with regret matching+.
+- **Pinned to the GNU toolchain** (`solver/rust-toolchain.toml`). Rust's default Windows
+  toolchain (msvc) needs the multi-gigabyte Visual Studio C++ build tools, which are NOT
+  installed and were not part of what was agreed. The gnu toolchain links with bundled
+  components, so `winget install Rustlang.Rustup` then `cargo run --release` is genuinely
+  all that is needed.
+- **No crate dependencies at all** — builds offline, cannot break on a crate update.
+- Parallel across stack depths (one thread each, no shared state, no locks).
 - Python (`tools/`) for enumeration, equity tables and content generation.
+
+### Output format (as built)
+- `data/strategy.json` — the tree structure only (~2 MB). Each node carries its ten-field
+  betting-state key so the browser can find it.
+- `data/strategy.bin` — the strategies, **one byte per action probability**. As JSON the
+  same data runs past 100 MB at high iteration counts.
+- `data/abstraction_check.json` — 4,000 samples of hand+board to card-state, written by
+  the Rust binary (`--dump-states`). The browser's port of the abstraction is checked
+  against it by `verifySolverAbstraction()`. **If these ever disagree the bot reads the
+  wrong row and plays nonsense, silently — so this check must stay.**
+
+### Matching a live hand to a solved node
+1. Depth = nearest grid point to the effective stack **as the hand started**
+   (`G.effStart`). Using the live `eff()` is wrong: it collapses to 0 once someone is
+   all in, and sends the lookup to the 10A tree.
+2. Exact ten-field key lookup.
+3. If that fails (real stacks drift off the grid, so a 47A jam has no twin in the 50A
+   tree), fall back to the closest node of the same shape, rejecting matches further
+   than 25% of the pot away.
+4. If still nothing, the heuristic bot takes the decision. Measured coverage: **99.4%**
+   of bot decisions come from the solved strategy.
 
 ### Stack depth grid (CONFIRMED)
 Solve separately at effective stacks of **10, 15, 20, 30, 40, 50, 65, 80, 100 antes**.

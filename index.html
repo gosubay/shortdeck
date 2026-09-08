@@ -264,17 +264,17 @@ tbody tr:hover{background:var(--panel)}
 </div>
 
 <h2>Browse the strategy</h2>
+<p class="muted">Pick a stack depth, then click actions to walk down the game tree. Every
+row is what the solver actually does, as a percentage.</p>
 <div class="sizerow">
  <label class="muted">Effective stack
   <select id="selDepth"></select></label>
- <label class="muted">Position
-  <select id="selPos">
-   <option value="btn">Button (posts 2A, acts last)</option>
-   <option value="bb">Non-button (posts 1A, acts first)</option>
-  </select></label>
- <label class="muted">Spot
-  <select id="selSpot"></select></label>
+ <button class="btn sm ghost" id="btnTreeBack">&larr; Back</button>
+ <button class="btn sm ghost" id="btnTreeRoot">Reset to start of hand</button>
 </div>
+<div id="treePath" class="muted" style="margin:.4em 0"></div>
+<div id="treeHere" class="note" style="margin:.6em 0"></div>
+<div class="actrow" id="treeActs"></div>
 <div id="strategyView"><p class="muted">Nothing to show yet.</p></div>
 
 <h2>What was actually solved</h2>
@@ -323,14 +323,24 @@ needs nothing installed.</p>
 <ol>
  <li>Install Rust once (Windows PowerShell):<br>
      <code>winget install Rustlang.Rustup</code><br>
-     then close and reopen PowerShell.</li>
+     then close and reopen PowerShell. Nothing else is needed &mdash; the project pins a
+     toolchain that does not require Visual Studio.</li>
  <li>Go to the solver folder:<br><code>cd C:\Claude\Code\shortdeck\solver</code></li>
  <li>Build and run:<br><code>cargo run --release</code></li>
- <li>It prints progress and writes <code>..\data\strategy.json</code> when done.
-     Commit and push that file and the website picks it up.</li>
+ <li>It writes <code>..\data\strategy.json</code> and <code>..\data\strategy.bin</code>.
+     Commit and push those two and the website picks them up.</li>
 </ol>
-<p class="muted">The run is long by design. Leave it going; it saves checkpoints as it
-goes, so stopping it does not lose the work.</p>
+<p>Useful switches:</p>
+<ul>
+ <li><code>--iters 100000000</code> &mdash; how many hands to learn from, per stack depth.
+     More is better and slower; it is the main quality dial.</li>
+ <li><code>--depths 50</code> &mdash; solve one stack depth only, for a quick test.</li>
+ <li><code>--dump-states 4000</code> &mdash; regenerate the file that proves the website's
+     hand-grouping matches the solver's.</li>
+</ul>
+<p class="muted">All nine depths run at once, one CPU core each. Roughly 300,000 hands per
+depth take 14 seconds on an 8-core machine, and it scales linearly from there &mdash; so
+20 million takes about 15 minutes and a billion takes about half a day.</p>
 
 </section>
 <!-- ================= STRATEGY ================= -->
@@ -429,10 +439,12 @@ dominated by every other pair, and there are only three ranks below the 9 to hid
 <div id="sRanking"></div>
 
 <h2>6. Core principles the solver plays by</h2>
-<div class="note bad" id="solverPrinciplesPending">
- <b>Waiting on the solver run.</b> This section will be written from the solver's actual
- output once the CFR run finishes &mdash; not from received poker wisdom. The principles
- below are the ones that follow directly from the maths above and are safe to rely on now.
+<div class="note">
+ <b>Where these come from.</b> The principles below follow directly from the maths on
+ this page &mdash; they are not received poker wisdom, and every one of them can be
+ checked against a number above. To see what the solver itself actually does, hand by
+ hand and street by street, use the <b>GTO Solver</b> tab: it lets you walk the solved
+ tree and read the real frequencies.
 </div>
 <div class="grid">
  <div class="cardbox"><h4>Play more hands, fold less</h4>
@@ -746,7 +758,8 @@ const ANTE = 1, BUTTON_ANTE = 1;              // button posts ANTE + BUTTON_ANTE
 const PF_FRACS = [0.5, 1.0];                  // preflop pot-relative raises
 const PF_MINRAISE_LABEL = "Min 4A";
 const POST_FRACS = [0.25, 0.5, 1.0, 1.5];     // postflop pot-relative bets/raises
-const MAX_BETS_PER_STREET = 4;                // then jam only
+const RERAISE_FRACS = [0.5, 1.0];             // menu once someone has already raised
+const MAX_RAISES = 3;                         // matches MAX_RAISES in solver/src/tree.rs
 const STREETS = ["Preflop","Flop","Turn","River"];
 
 const G = {
@@ -758,8 +771,11 @@ const G = {
   committed:[0,0],      // total put in this hand by each seat
   streetBet:[0,0],      // put in on the current street
   pot:0, currentBet:0, minRaiseInc:0, betsThisStreet:0,
+  /* last aggressor in SOLVER seat terms (0 = button, 1 = non-button, -1 = nobody).
+     Part of the key used to find the matching node in the solved tree. */
+  lastAgg:0,
   toAct:0, actorsToAct:0, folded:-1, allIn:[false,false],
-  showdownDone:false, lastMsg:"", handLog:[],
+  showdownDone:false, lastMsg:"", handLog:[], effStart:START_STACK,
   autoDeal:false, revealBot:false
 };
 
@@ -820,6 +836,11 @@ function newHand(){
   const notes = maintainStacks();
   G.live=true; G.street=0; G.board=[]; G.folded=-1; G.showdownDone=false;
   G.allIn=[false,false]; G.betsThisStreet=0; G.revealBot=false;
+  G.lastAgg=0;            // the button's extra ante is the opening aggression
+  /* Effective stack as it was BEFORE any money went in. The solved trees are indexed by
+     the starting effective stack; eff() collapses to 0 the moment someone is all in, so
+     using it mid-hand sends the lookup to the wrong tree entirely. */
+  G.effStart = Math.min(G.stacks[0], G.stacks[1]);
   G.deck = shuffle(freshDeck());
   G.hole=[[G.deck.pop(),G.deck.pop()],[G.deck.pop(),G.deck.pop()]];
   G.committed=[0,0]; G.streetBet=[0,0]; G.pot=0;
@@ -854,40 +875,46 @@ function legalActions(s){
   if(toCall === 0) acts.push({t:"check", label:"Check", amt:0});
   else acts.push({t:"call", label:`Call ${fmtA(Math.min(toCall,stack))}`, amt:Math.min(toCall,stack)});
 
-  /* can we put in more? */
+  /* Can we put in more? This block mirrors solver/src/tree.rs EXACTLY - same menu, same
+     0.5A quantisation, same raise cap. If it drifts, the live game can reach betting
+     states that do not exist in the solved tree and the bot silently loses its strategy. */
   const oppMax = G.stacks[other(s)] + G.streetBet[other(s)];   // most opponent can match
-  const myMaxTo = Math.min(stack + G.streetBet[s], oppMax);    // cap: no bet bigger than opponent can call
-  if(myMaxTo > G.currentBet + 1e-9 && G.stacks[s] > toCall + 1e-9){
-    const potAfterCall = G.pot + toCall;
-    const fracs = G.street===0 ? PF_FRACS : POST_FRACS;
+  const myMaxTo = Math.min(stack + G.streetBet[s], oppMax);    // never bet more than they can call
+  if(myMaxTo > G.currentBet + 1e-9 && G.stacks[s] > toCall + 1e-9
+     && G.betsThisStreet < MAX_RAISES){
+    const curT = T(G.currentBet), potACT = T(G.pot + toCall);
+    const minToT = curT + T(G.minRaiseInc);
+    const maxToT = T(myMaxTo);
     const seen = new Set();
-    const capReached = G.betsThisStreet >= MAX_BETS_PER_STREET;
+    const first = G.betsThisStreet === 0;
+    const fracs = first ? (G.street===0 ? PF_FRACS : POST_FRACS) : RERAISE_FRACS;
 
-    if(!capReached){
-      if(G.street===0 && toCall>0){
-        /* explicit min-raise button preflop */
-        const to = G.currentBet + G.minRaiseInc;
-        if(to < myMaxTo-1e-9){ seen.add(round1(to));
-          acts.push({t:"raise", to:round1(to), label:`${PF_MINRAISE_LABEL}`}); }
-      }
-      for(const f of fracs){
-        let to = G.currentBet + f*potAfterCall;
-        to = round1(to);
-        const minTo = G.currentBet + Math.max(G.minRaiseInc, G.street===0?0:1);
-        if(to < minTo) to = round1(minTo);
-        if(to >= myMaxTo-1e-9) continue;          // that is a jam, listed separately
-        if(seen.has(to)) continue;
-        seen.add(to);
-        acts.push({t:"raise", to, frac:f,
-                   label:`${toCall>0?"Raise":"Bet"} ${Math.round(f*100)}% (${fmtA(to-G.streetBet[s])})`});
-      }
+    if(first && G.street===0 && toCall>0 && minToT < maxToT){
+      seen.add(minToT);
+      acts.push({t:"raise", to:A(minToT), label:PF_MINRAISE_LABEL});
     }
-    acts.push({t:"raise", to:round1(myMaxTo), jam:true,
-               label:`Jam ${fmtA(Math.min(stack, myMaxTo-G.streetBet[s]))}`});
+    for(const f of fracs){
+      let toT = quantRaise(curT, f, potACT);
+      if(toT < minToT) toT = minToT;
+      if(toT >= maxToT || seen.has(toT)) continue;   // at or past max is a jam
+      seen.add(toT);
+      acts.push({t:"raise", to:A(toT), frac:f,
+                 label:`${toCall>0?"Raise":"Bet"} ${Math.round(f*100)}% (${fmtA(A(toT)-G.streetBet[s])})`});
+    }
+    acts.push({t:"raise", to:A(maxToT), jam:true,
+               label:`Jam ${fmtA(Math.min(stack, A(maxToT)-G.streetBet[s]))}`});
   }
   return acts;
 }
 const round1 = v => Math.round(v*10)/10;
+/* money helpers: the solver works in TENTHS of an ante and rounds every bet target to
+   0.5A. Doing the arithmetic the same way here is what keeps the two in step. */
+const T = v => Math.round(v*10);
+const A = t => t/10;
+const quantRaise = (curT, f, potACT) => {
+  const to = curT + Math.trunc(f*potACT);      // Rust: (f * pot_after_call as f32) as i32
+  return Math.floor((to + 2)/5)*5;             // Rust: ((to + QUANT/2) / QUANT) * QUANT
+};
 
 /* snap an arbitrary raise-to onto the abstraction (geometric midpoints, SPEC.md) */
 function snapFrac(rawTo, s){
@@ -895,7 +922,8 @@ function snapFrac(rawTo, s){
   const potAfterCall = G.pot + toCall;
   if(potAfterCall<=0) return "jam";
   const f = (rawTo - G.currentBet)/potAfterCall;
-  const fracs = G.street===0 ? PF_FRACS : POST_FRACS;
+  const fracs = G.betsThisStreet===0 ? (G.street===0 ? PF_FRACS : POST_FRACS)
+                                    : RERAISE_FRACS;
   const oppMax = G.stacks[other(s)] + G.streetBet[other(s)];
   const jamTo = Math.min(G.stacks[s]+G.streetBet[s], oppMax);
   const jamF = (jamTo - G.currentBet)/potAfterCall;
@@ -927,6 +955,7 @@ function act(s, a){
     G.minRaiseInc = Math.max(G.minRaiseInc, inc);
     G.currentBet = G.streetBet[s];
     G.betsThisStreet++;
+    G.lastAgg = solverSeat(s);
     const verb = toCall>0 ? "raise to" : "bet";
     logLine(`${who} ${verb} ${fmtA(G.currentBet)}${G.allIn[s]?" (all in)":""}.`, cls);
     G.actorsToAct = 1;                      // opponent must respond
@@ -947,6 +976,7 @@ function nextStreet(){
   if(G.street>=3){ showdown(); return; }
   G.street++;
   G.streetBet=[0,0]; G.currentBet=0; G.minRaiseInc=1; G.betsThisStreet=0;
+  G.lastAgg=-1;
   const n = G.street===1?3:1;
   for(let i=0;i<n;i++) G.board.push(G.deck.pop());
   logLine(`${STREETS[G.street]}: ${G.board.map(cardStr).join(" ")} - pot ${fmtA(G.pot)}`, "sys");
@@ -1030,6 +1060,12 @@ function botEquity(){
 }
 
 function botChoose(){
+  /* The solved strategy comes first. It returns null for spots outside the solved tree
+     (unequal stacks that snapped to a different depth, or a state the sampler never
+     reached often enough to export), and then the heuristic below takes over. */
+  const solved = solverChoose(1);
+  if(solved) return solved;
+
   const s=1, acts=legalActions(s);
   const toCall = Math.max(0, G.currentBet - G.streetBet[s]);
   const eq = botEquity();
@@ -1085,6 +1121,277 @@ function botTurn(){
     act(1, a);
   }, delay);
 }
+</script>
+<script>
+/* =====================================================================
+   SOLVED STRATEGY: loading, lookup, and the bot that plays it.
+
+   Everything in the first half of this file is a port of solver/src/abstraction.rs and
+   MUST stay bit-identical to it. If the two disagree the bot reads the wrong row of the
+   strategy table and plays nonsense, silently. verifySolverAbstraction() checks the port
+   against 4,000 samples generated by the Rust binary itself.
+   ===================================================================== */
+
+const SOLVER = {
+  tree: null,        // parsed strategy.json
+  byDepth: {},       // depth -> {nodes, root, keyMap, strat:Map(nodeIdx -> Map(state->Uint8Array))}
+  ready: false,
+  misses: 0, hits: 0
+};
+
+/* ---------- port of abstraction.rs ---------- */
+const N_BUCKET_JS = 216;
+
+function jsPreflopClass(hole){
+  const r1=rankOf(hole[0]), r2=rankOf(hole[1]);
+  const suited = suitOf(hole[0])===suitOf(hole[1]);
+  const hi=Math.max(r1,r2), lo=Math.min(r1,r2);
+  if(hi===lo) return hi;
+  let k=0;
+  for(let a=1;a<NRANK;a++) for(let b=0;b<a;b++){
+    if(a===hi && b===lo) return 9 + 2*k + (suited?0:1);
+    k++;
+  }
+  throw new Error("bad hole");
+}
+
+function jsTexture(board){
+  const sc=[0,0,0,0], rc=new Array(NRANK).fill(0);
+  for(const c of board){ sc[suitOf(c)]++; rc[rankOf(c)]++; }
+  const maxs=Math.max(...sc);
+  const suitcat = maxs>=4?2:(maxs===3?1:0);
+  const paired = rc.some(n=>n>=2)?1:0;
+  return suitcat*2+paired;
+}
+
+function jsStraightDraw(mask){
+  let outs=0;
+  for(const [m] of STRAIGHT_MASKS){
+    let have=0;
+    for(let r=0;r<NRANK;r++) if((m>>r&1) && (mask>>r&1)) have++;
+    if(have===4) outs |= (m & ~mask);
+  }
+  let n=0; for(let r=0;r<NRANK;r++) if(outs>>r&1) n++;
+  return n===0?0:(n===1?1:2);
+}
+
+function jsFlushDraw(board, hole){
+  const sc=[0,0,0,0];
+  for(const c of board) sc[suitOf(c)]++;
+  for(const c of hole) sc[suitOf(c)]++;
+  return sc.some(n=>n===4)?1:0;
+}
+
+function jsStrengthBin(hole, board, cat){
+  const boardScore = score(board);
+  const brc = new Array(NRANK).fill(0);
+  for(const c of board) brc[rankOf(c)]++;
+  const branks = board.map(rankOf);
+  const bmax = Math.max(...branks), bmin = Math.min(...branks);
+
+  if(cat === HIGH){
+    let over=0; for(const c of hole) if(rankOf(c)>bmax) over++;
+    return Math.min(over,2);
+  }
+  if(cat === PAIR){
+    const rc = brc.slice();
+    for(const c of hole) rc[rankOf(c)]++;
+    let pr=0;
+    for(let r=NRANK-1;r>=0;r--) if(rc[r]===2){ pr=r; break; }
+    if(brc[pr]>=2) return 0;
+    if(pr>bmax) return 3;
+    if(pr===bmax) return 2;
+    if(pr>bmin) return 1;
+    return 0;
+  }
+  const mine = score(board.concat(hole));
+  if(mine === boardScore) return 0;
+  if(cat >= STRAIGHT) return 3;
+  if(rankOf(hole[0])===rankOf(hole[1]) && cat===TRIPS) return 3;
+  return 2;
+}
+
+function jsPostflopState(hole, board){
+  const cards = board.concat(hole);
+  const cat = score(cards)>>20;
+  const strength = jsStrengthBin(hole, board, cat);
+  let fd=0, sd=0;
+  if(!(board.length>=5 || cat>=FLUSH)){
+    let mask=0; for(const c of cards) mask |= 1<<rankOf(c);
+    fd = jsFlushDraw(board, hole);
+    sd = jsStraightDraw(mask);
+  }
+  const bucket = cat*24 + strength*6 + fd*3 + sd;
+  return jsTexture(board)*N_BUCKET_JS + bucket;
+}
+
+/* ---------- verification against the Rust output ---------- */
+async function verifySolverAbstraction(){
+  const r = await fetch("data/abstraction_check.json", {cache:"no-cache"});
+  if(!r.ok) return {ok:false, reason:"abstraction_check.json not found"};
+  const rows = await r.json();
+  let bad = [];
+  for(const row of rows){
+    const hole = parseCards(row.hole), b = parseCards(row.board);
+    const got = {
+      pf: jsPreflopClass(hole),
+      flop: jsPostflopState(hole, b.slice(0,3)),
+      turn: jsPostflopState(hole, b.slice(0,4)),
+      river: jsPostflopState(hole, b.slice(0,5))
+    };
+    for(const k of ["pf","flop","turn","river"]){
+      if(got[k]!==row[k]){
+        bad.push(`${row.hole} on ${row.board} ${k}: js=${got[k]} rust=${row[k]}`);
+        break;
+      }
+    }
+    if(bad.length>6) break;
+  }
+  return {ok:bad.length===0, checked:rows.length, bad};
+}
+window.verifySolverAbstraction = verifySolverAbstraction;
+
+/* ---------- loading ---------- */
+async function loadSolver(){
+  const rj = await fetch("data/strategy.json", {cache:"no-cache"});
+  if(!rj.ok) return false;
+  const tree = await rj.json();
+  const rb = await fetch("data/" + (tree.strategyFile||"strategy.bin"), {cache:"no-cache"});
+  if(!rb.ok) return false;
+  const buf = new Uint8Array(await rb.arrayBuffer());
+  const dv = new DataView(buf.buffer);
+
+  if(String.fromCharCode(buf[0],buf[1],buf[2],buf[3]) !== "SDS1")
+    throw new Error("strategy.bin: bad magic");
+  let p = 4;
+  const nDepths = dv.getUint32(p, true); p += 4;
+
+  SOLVER.tree = tree;
+  SOLVER.byDepth = {};
+  for(let d=0; d<nDepths; d++){
+    const depth = dv.getInt32(p, true); p += 4;
+    const meta = tree.depths.find(x=>x.depth===depth);
+    if(!meta) throw new Error("strategy.bin depth "+depth+" not in strategy.json");
+    const strat = new Map();
+    for(;;){
+      const nodeIdx = dv.getUint32(p, true); p += 4;
+      if(nodeIdx === 0xFFFFFFFF) break;
+      const nRows = dv.getUint32(p, true); p += 4;
+      const nact = meta.nodes[nodeIdx].a.length;
+      const m = new Map();
+      for(let i=0;i<nRows;i++){
+        const st = dv.getUint16(p, true); p += 2;
+        m.set(st, buf.subarray(p, p+nact)); p += nact;
+      }
+      strat.set(nodeIdx, m);
+    }
+    /* Two indexes. The exact one finds the node for an identical betting state. The
+       grouped one is for the case that cannot be avoided: real stacks drift off the
+       10/15/20/... grid, so a jam for 47.0A has no exact twin in the 50A tree. Then we
+       take the node with the same shape and the closest amounts. */
+    const keyMap = new Map();
+    const groups = new Map();
+    meta.nodes.forEach((n,i)=>{
+      if(n.k!=="D") return;
+      keyMap.set(n.st.join(","), i);
+      const g = [n.st[0],n.st[1],n.st[6],n.st[7],n.st[8]].join(",");
+      if(!groups.has(g)) groups.set(g, []);
+      groups.get(g).push({i, c0:n.st[2], c1:n.st[3], sb0:n.st[4], sb1:n.st[5]});
+    });
+    SOLVER.byDepth[depth] = {meta, strat, keyMap, groups};
+  }
+  SOLVER.ready = true;
+  return true;
+}
+window.loadSolver = loadSolver;
+
+/* ---------- lookup ---------- */
+const SOLVER_DEPTHS = [10,15,20,30,40,50,65,80,100];
+function nearestDepth(effA){
+  let best=SOLVER_DEPTHS[0];
+  for(const d of SOLVER_DEPTHS) if(Math.abs(d-effA)<Math.abs(best-effA)) best=d;
+  return best;
+}
+/* solver seat 0 is always the BUTTON */
+const solverSeat = s => (s===G.button ? 0 : 1);
+const t10 = v => Math.round(v*10);
+
+function solverStateVec(){
+  const b = G.button, nb = 1-b;     // solver seat 0 is the button
+  return [
+    G.street,
+    solverSeat(G.toAct),
+    t10(G.committed[b]), t10(G.committed[nb]),
+    t10(G.streetBet[b]), t10(G.streetBet[nb]),
+    G.betsThisStreet,
+    G.lastAgg,
+    G.actorsToAct,
+    t10(G.minRaiseInc)
+  ];
+}
+function solverKey(){ return solverStateVec().join(","); }
+
+/* Find the node for the current spot. Exact match first; otherwise the closest node of
+   the same shape, which is what rescues hands played at a stack size between grid points
+   (a 47A jam against the 50A tree). Returns -1 if nothing close enough exists. */
+function findNode(D){
+  const v = solverStateVec();
+  const exact = D.keyMap.get(v.join(","));
+  if(exact !== undefined) return exact;
+  const g = D.groups.get([v[0],v[1],v[6],v[7],v[8]].join(","));
+  if(!g) return -1;
+  let best=-1, bestd=Infinity;
+  for(const n of g){
+    const d = Math.abs(n.c0-v[2]) + Math.abs(n.c1-v[3])
+            + Math.abs(n.sb0-v[4]) + Math.abs(n.sb1-v[5]);
+    if(d < bestd){ bestd = d; best = n.i; }
+  }
+  /* refuse a match that is not really the same spot */
+  const pot = v[2] + v[3];
+  return bestd <= Math.max(20, pot * 0.25) ? best : -1;
+}
+
+/* Returns a JS action chosen by the solved strategy, or null if this spot is not in the
+   solved tree (then the caller falls back to the heuristic bot). */
+function solverChoose(seat){
+  if(!SOLVER.ready) return null;
+  const depth = nearestDepth(G.effStart);      // stack depth as the hand STARTED
+  const D = SOLVER.byDepth[depth];
+  if(!D) return null;
+  const idx = findNode(D);
+  if(idx < 0){ SOLVER.misses++; return null; }
+  const node = D.meta.nodes[idx];
+  const state = G.street===0
+      ? jsPreflopClass(G.hole[seat])
+      : jsPostflopState(G.hole[seat], G.board.slice(0, G.street===1?3:(G.street===2?4:5)));
+  const rows = D.strat.get(idx);
+  const row = rows && rows.get(state);
+  if(!row){ SOLVER.misses++; return null; }
+  SOLVER.hits++;
+
+  let tot=0; for(const v of row) tot+=v;
+  if(tot<=0){ SOLVER.misses++; return null; }
+  let r = Math.random()*tot, pick=0;
+  for(let i=0;i<row.length;i++){ r-=row[i]; if(r<=0){ pick=i; break; } }
+
+  const a = node.a[pick];
+  const legal = legalActions(seat);
+  switch(a[0]){
+    case "f": return legal.find(x=>x.t==="fold") || legal[0];
+    case "x": return legal.find(x=>x.t==="check") || legal[0];
+    case "c": return legal.find(x=>x.t==="call") || legal.find(x=>x.t==="check") || legal[0];
+    case "r": {
+      const to = a[1]/10;
+      const raises = legal.filter(x=>x.t==="raise");
+      if(!raises.length) return legal.find(x=>x.t==="call") || legal[0];
+      /* pick the legal raise closest to what the solver wants */
+      return raises.reduce((best,x)=>
+        Math.abs(x.to-to) < Math.abs(best.to-to) ? x : best, raises[0]);
+    }
+  }
+  return null;
+}
+window.solverChoose = solverChoose;
 </script>
 <script>
 /* =====================================================================
@@ -1177,15 +1484,20 @@ function renderActions(){
     const hint = el("span","muted","");
     const upd = ()=>{
       const v=parseFloat(inp.value);
-      if(isNaN(v)) { hint.textContent=`any amount ${minTo}A - ${maxTo}A`; return; }
-      const f = snapFrac(v, 0);
-      hint.textContent = `→ treated as ${f==="jam"?"a jam":Math.round(f*100)+"% pot"} by the bot`;
+      if(isNaN(v)) { hint.textContent=`any amount ${minTo}A - ${maxTo}A, in 0.5A steps`; return; }
+      const snapped = A(Math.round(T(v)/5)*5);
+      const f = snapFrac(snapped, 0);
+      hint.textContent = `bet ${snapped.toFixed(1)}A → the bot reads it as `
+        + `${f==="jam"?"a jam":Math.round(f*100)+"% pot"}`;
     };
     inp.oninput = upd; upd();
     go.onclick = ()=>{
       let v = parseFloat(inp.value);
       if(isNaN(v)) return;
-      v = Math.max(minTo, Math.min(maxTo, round1(v)));
+      /* snap to the 0.5A grid: a real table has no 4.37-ante bet, and staying on the
+         grid is what keeps the solved strategy reachable for the rest of the hand */
+      v = A(Math.round(T(v)/5)*5);
+      v = Math.max(minTo, Math.min(maxTo, v));
       act(0, {t:"raise", to:v, custom:true, label:"custom"});
     };
     size.appendChild(inp); size.appendChild(go); size.appendChild(hint);
@@ -1305,13 +1617,107 @@ function renderStrategyContent(d){
   for(const r of d.preflop_ranking) PF_EQ[r.hand] = r.eq_vs_random;
 }
 
-/* ---------- solver tab ---------- */
+/* ---------- solver tab: a walkable view of the solved tree ---------- */
+const VIEW = { depth: 50, path: [] };     // path = list of node indices, [0] is the root
+
+function curDepthData(){ return SOLVER.ready ? SOLVER.byDepth[VIEW.depth] : null; }
+
+function actLabel(a, node){
+  const potA = (node.c[0] + node.c[1]) / 10;
+  switch(a[0]){
+    case "f": return "Fold";
+    case "x": return "Check";
+    case "c": return "Call";
+    case "r": {
+      const to = a[1] / 10, tag = a[2];
+      if(tag === -2) return `Jam ${to.toFixed(1)}A`;
+      if(tag === -1) return `Min-raise to ${to.toFixed(1)}A`;
+      return `${Math.round(tag*100)}% pot (to ${to.toFixed(1)}A)`;
+    }
+  }
+  return "?";
+}
+
+function renderTree(){
+  const D = curDepthData();
+  const path = $("treePath"), here = $("treeHere"), acts = $("treeActs"),
+        view = $("strategyView");
+  if(!D){ path.textContent=""; here.textContent=""; acts.innerHTML="";
+          view.innerHTML='<p class="muted">Nothing to show yet.</p>'; return; }
+  if(!VIEW.path.length) VIEW.path = [D.meta.root];
+
+  const idx = VIEW.path[VIEW.path.length-1];
+  const node = D.meta.nodes[idx];
+
+  path.textContent = "Line: " + (VIEW.path.length===1 ? "start of hand"
+    : VIEW.path.slice(0,-1).map((p,i)=>{
+        const parent = D.meta.nodes[p];
+        const child = VIEW.path[i+1];
+        const k = parent.kids.indexOf(child);
+        return k>=0 ? actLabel(parent.a[k], parent) : "?";
+      }).join("  →  "));
+
+  if(node.k !== "D"){
+    here.innerHTML = node.k==="S" ? "<b>Showdown.</b> The hand is over."
+                                  : "<b>Hand over</b> - someone folded.";
+    acts.innerHTML = ""; view.innerHTML = "";
+    return;
+  }
+
+  const pot = (node.c[0]+node.c[1])/10;
+  const seat = node.p===0 ? "Button (acts last)" : "Non-button (acts first)";
+  const streetName = ["Preflop","Flop","Turn","River"][node.s];
+  const toCall = (Math.max(node.st[4],node.st[5]) - node.st[node.p===0?4:5])/10;
+  here.innerHTML = `<b>${streetName}</b> &nbsp;|&nbsp; pot <b>${pot.toFixed(1)}A</b>`
+    + ` &nbsp;|&nbsp; to act: <b>${seat}</b>`
+    + (toCall>0 ? ` &nbsp;|&nbsp; facing a bet of <b>${toCall.toFixed(1)}A</b>` : "")
+    + ` &nbsp;|&nbsp; effective stack <b>${VIEW.depth}A</b>`;
+
+  acts.innerHTML = "";
+  node.a.forEach((a,i)=>{
+    const b = el("button","btn sm", actLabel(a,node));
+    b.onclick = ()=>{ VIEW.path.push(node.kids[i]); renderTree(); };
+    acts.appendChild(b);
+  });
+
+  /* the strategy table */
+  const rows = D.strat.get(idx);
+  if(!rows || !rows.size){
+    view.innerHTML = '<p class="muted">This spot was reached too rarely in the solve to '
+      + 'be exported. Try a more common line.</p>';
+    return;
+  }
+  const hdr = node.a.map(a=>`<th class="num">${actLabel(a,node)}</th>`).join("");
+  let body = "";
+  const entries = [...rows.entries()].sort((x,y)=>x[0]-y[0]);
+  for(const [st, probs] of entries){
+    let tot=0; for(const v of probs) tot+=v;
+    if(tot<=0) continue;
+    const label = node.s===0
+      ? (SOLVER.tree.preflopClasses[st] || ("class "+st))
+      : `${SOLVER.tree.bucketNames[st % SOLVER.tree.nBucket]}`
+        + ` <span class="muted">(${SOLVER.tree.textureNames[Math.floor(st/SOLVER.tree.nBucket)]})</span>`;
+    const cells = [...probs].map(v=>{
+      const pct = v/tot*100;
+      const col = pct>=60?"var(--acc)":(pct>=25?"var(--gold)":(pct>0?"var(--dim)":"var(--dim2)"));
+      return `<td class="num" style="color:${col}">${pct>=0.5?pct.toFixed(0)+"%":"·"}</td>`;
+    }).join("");
+    body += `<tr><td>${label}</td>${cells}</tr>`;
+  }
+  view.innerHTML = `<div class="scrollx"><table><thead><tr>`
+    + `<th>${node.s===0?"Starting hand":"Hand class"}</th>${hdr}</tr></thead>`
+    + `<tbody>${body}</tbody></table></div>`
+    + `<p class="muted">${entries.length} rows. Postflop rows are bucket names, not exact `
+    + `hands - that is the abstraction described below.</p>`;
+}
+
 function renderSolverTab(){
   const st=$("solverStatus"), meta=$("solverMeta");
-  if(SOLVED){
+  if(SOLVER.ready){
+    const t = SOLVER.tree;
     st.className="pill ok"; st.textContent="solved strategy loaded";
-    meta.textContent = ` · ${SOLVED.iterations?.toLocaleString?.()||"?"} iterations`
-                     + ` · generated ${SOLVED.generated||"?"}`;
+    meta.textContent = ` · ${(t.iterations||0).toLocaleString()} iterations per depth`
+                     + ` · generated ${t.generated||"?"}`;
     $("solverMissing").style.display="none";
     $("engineTag").textContent = "Bot engine: solved strategy";
   } else {
@@ -1319,9 +1725,6 @@ function renderSolverTab(){
     meta.textContent = " · Play tab is using the heuristic fallback bot";
     $("solverMissing").style.display="";
     $("engineTag").textContent = "Bot engine: heuristic fallback (solver not yet run)";
-    $("strategyView").innerHTML =
-      '<p class="muted">Once <code>data/strategy.json</code> exists, this shows the solved '
-      + 'action frequencies for every starting hand at every stack depth.</p>';
   }
   const dsel=$("selDepth");
   if(dsel && !dsel.options.length){
@@ -1329,13 +1732,11 @@ function renderSolverTab(){
       const o=el("option"); o.value=d; o.textContent=d+"A"; if(d===50) o.selected=true;
       dsel.appendChild(o);
     }
+    dsel.onchange = ()=>{ VIEW.depth = +dsel.value; VIEW.path=[]; renderTree(); };
   }
-  const ssel=$("selSpot");
-  if(ssel && !ssel.options.length){
-    for(const s of ["Preflop: first in","Preflop: facing a raise","Flop","Turn","River"]){
-      const o=el("option"); o.textContent=s; ssel.appendChild(o);
-    }
-  }
+  $("btnTreeBack").onclick = ()=>{ if(VIEW.path.length>1){ VIEW.path.pop(); renderTree(); } };
+  $("btnTreeRoot").onclick = ()=>{ VIEW.path=[]; renderTree(); };
+  renderTree();
 }
 
 /* ---------- boot ---------- */
@@ -1346,9 +1747,8 @@ async function boot(){
     if(r.ok) renderStrategyContent(await r.json());
   }catch(e){ console.warn("teaching content not loaded", e); }
   try{
-    const r = await fetch("data/strategy.json", {cache:"no-cache"});
-    if(r.ok) SOLVED = await r.json();
-  }catch(e){ /* expected until the solver has run */ }
+    await loadSolver();
+  }catch(e){ console.warn("solved strategy not loaded:", e); }
   renderSolverTab();
   afterStateChange();
   logLine("Welcome. Both players ante 1A, the button posts an extra 1A. "
