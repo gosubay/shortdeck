@@ -202,8 +202,20 @@ Two rules follow, and neither is optional:
 | 1B | ~630 | preflop + common postflop lines |
 | 5B | ~3,200 | the agreed 72-hour target |
 
-Timing on the 7800X3D: 300k iterations across all nine depths (parallel) = **14 seconds**,
-and it scales linearly. So 5 billion is roughly 65 hours.
+**Timing — measured, not extrapolated.** Small runs scale much better than large ones
+because nine threads on eight cores start contending for memory bandwidth. At 50M
+iterations: 10A took 286s, 15A 540s, 20A 827s, and 100A (8x the tree of 10A) is the
+long pole at roughly 2,900s.
+
+| Hands per depth | Wall clock |
+|---|---|
+| 300k | 14 seconds |
+| 50M | ~50 minutes |
+| 1B | ~16 hours |
+| 3B | **~2 days** |
+
+Do not estimate these by scaling the 14-second run linearly — that under-predicts badly,
+and it is what produced an earlier wrong estimate of 40 hours for the 3B run.
 
 Preflop converges enormously faster than postflop because it has only ~2,900 infosets per
 depth against ~1.58M. This is why a partial solve still produces a genuinely strong
