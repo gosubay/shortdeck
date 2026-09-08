@@ -1,0 +1,72 @@
+<header class="top">
+ <div class="wrap">
+  <div class="topbar">
+   <div class="brand">Short Deck <span>HU</span> Trainer</div>
+   <div class="hud">
+    <div class="stat"><span class="k">Profit</span><span class="v" id="hudProfit">0.0A</span></div>
+    <div class="stat"><span class="k">Hands</span><span class="v" id="hudHands">0</span></div>
+    <div class="stat"><span class="k">Win / 100</span><span class="v" id="hudWr">--</span></div>
+   </div>
+   <nav class="tabs">
+    <button class="tab on" data-tab="play">Play</button>
+    <button class="tab" data-tab="solver">GTO Solver</button>
+    <button class="tab" data-tab="strategy">Strategy</button>
+    <button class="tab" data-tab="rules">Rules</button>
+   </nav>
+  </div>
+ </div>
+</header>
+
+<main class="wrap">
+
+<!-- ================= PLAY ================= -->
+<section class="panel on" id="panel-play">
+
+ <div class="felt">
+  <div class="seat" id="seatBot">
+   <div class="nameplate" id="plateBot">
+     <span class="nm">Solver Bot <span id="botBtnChip"></span></span>
+     <span class="st" id="botStack">50.0A</span>
+   </div>
+   <div id="botCards" class="board" style="min-height:0"></div>
+   <span class="chips" id="botBet"></span>
+  </div>
+
+  <div class="middle">
+   <div class="potline">Pot</div>
+   <div class="potval" id="potVal">0.0A</div>
+   <div class="board" id="boardCards"></div>
+   <div class="msg" id="tableMsg"></div>
+  </div>
+
+  <div class="seat" id="seatMe">
+   <div class="nameplate act" id="plateMe">
+     <span class="nm">You <span id="meBtnChip"></span></span>
+     <span class="st" id="meStack">50.0A</span>
+   </div>
+   <div id="myCards" class="board" style="min-height:0"></div>
+   <span class="chips" id="myBet"></span>
+  </div>
+ </div>
+
+ <div class="controls">
+  <div class="actrow" id="actRow"></div>
+  <div class="sizerow" id="sizeRow"></div>
+  <div class="sizerow">
+   <button class="btn sm ghost" id="btnNext" style="display:none">Next hand &rarr;</button>
+   <button class="btn sm ghost" id="btnReset">Reset stats</button>
+   <button class="btn sm ghost" id="btnAuto">Auto-deal: off</button>
+   <span class="muted" id="engineTag"></span>
+  </div>
+ </div>
+
+ <div class="log" id="log"></div>
+
+ <div class="note" id="stackRuleNote">
+  <b>Stack rules in force:</b> you both start at 50A. Drop below 10A and you are
+  automatically topped back up to 50A. Go above 100A and the excess is banked as profit
+  (ratholed) so you restart the next hand at 100A. Your score at the top right counts
+  every ante won or lost, including banked chips.
+ </div>
+
+</section>

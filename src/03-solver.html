@@ -1,0 +1,87 @@
+<!-- ================= GTO SOLVER ================= -->
+<section class="panel" id="panel-solver">
+
+<h1 style="font-size:1.5rem">GTO Solver</h1>
+<p class="muted" style="margin-bottom:1.2em">
+ Status: <span id="solverStatus" class="pill pend">checking...</span>
+ <span id="solverMeta"></span>
+</p>
+
+<div class="note bad" id="solverMissing" style="display:none">
+ <b>No solved strategy is loaded yet.</b> The bot in the Play tab is currently running a
+ <b>heuristic fallback</b> &mdash; it plays by hand-strength and pot-odds rules, not by a
+ solved equilibrium. It is a real opponent, but it is not the solver. Once the CFR run
+ finishes and <code>data/strategy.json</code> is committed, this tab fills with the
+ solved ranges and the Play tab switches over automatically.
+</div>
+
+<h2>Browse the strategy</h2>
+<div class="sizerow">
+ <label class="muted">Effective stack
+  <select id="selDepth"></select></label>
+ <label class="muted">Position
+  <select id="selPos">
+   <option value="btn">Button (posts 2A, acts last)</option>
+   <option value="bb">Non-button (posts 1A, acts first)</option>
+  </select></label>
+ <label class="muted">Spot
+  <select id="selSpot"></select></label>
+</div>
+<div id="strategyView"><p class="muted">Nothing to show yet.</p></div>
+
+<h2>What was actually solved</h2>
+<p>A true GTO solve of 50-ante deep heads-up poker is not possible on a PC &mdash; it is a
+problem the size of a national lab. What this is instead is an <b>abstracted equilibrium</b>:
+the game is simplified in two specific, disclosed ways, that simplified game is solved
+properly, and real hands are mapped onto it.</p>
+
+<div class="grid">
+ <div class="cardbox"><h4>Preflop: nothing is simplified</h4>
+  <p style="margin:0">All 630 combinations collapse to <b>81 strategically identical
+  starting hands</b>, because before a board exists the four suits are interchangeable.
+  That collapse is <b>exact</b>, so preflop is solved with no card abstraction at all.</p></div>
+ <div class="cardbox"><h4>Postflop: hands are bucketed</h4>
+  <p style="margin:0">Similar hands are grouped. Grouping is <b>potential-aware</b>: two
+  hands only share a bucket if they have a similar <i>spread</i> of outcomes across future
+  cards, not merely the same equity today.</p></div>
+ <div class="cardbox"><h4>Bet sizes are restricted</h4>
+  <p style="margin:0">Preflop: limp, min-raise, 50% pot, 100% pot, jam.
+  Postflop: 25%, 50%, 100%, 150% pot, jam. Max 4 bets per street.</p></div>
+ <div class="cardbox"><h4>Nine stack depths</h4>
+  <p style="margin:0">10, 15, 20, 30, 40, 50, 65, 80 and 100 antes, solved separately.
+  The top-up and rathole rules keep every real stack inside that range.</p></div>
+</div>
+
+<h3>Why bucketing is not optional</h3>
+<p>People ask why this is not done like PioSOLVER, which uses every combination with no
+grouping at all. The answer is storage. Pio solves <b>one</b> flop against <b>one</b> pair
+of ranges. A bot has to know every board. Card-perfect postflop play for a single stack
+depth works out at roughly:</p>
+<p style="text-align:center;font-size:1.05rem">
+ 573 flop classes &times; ~100,000 decision points &times; 630 combos
+ &asymp; <b>140 GB</b></p>
+<p>Per stack depth. Your browser is not downloading that. Bucketing brings it to tens of
+megabytes, and that is the entire reason it exists.</p>
+
+<h3>How honest is the result?</h3>
+<p>Strong, and principled, and beatable by an expert who finds the seams between buckets.
+It is labelled an approximation everywhere in this app because that is what it is. What it
+is <b>not</b> is a set of hand-written rules pretending to be a solver.</p>
+
+<h2>Run the solver yourself</h2>
+<p>The solver source lives in <code>solver/</code> in this repo. It is written in Rust for
+speed. You need it only if you want to re-run or change the solve &mdash; playing the bot
+needs nothing installed.</p>
+<ol>
+ <li>Install Rust once (Windows PowerShell):<br>
+     <code>winget install Rustlang.Rustup</code><br>
+     then close and reopen PowerShell.</li>
+ <li>Go to the solver folder:<br><code>cd C:\Claude\Code\shortdeck\solver</code></li>
+ <li>Build and run:<br><code>cargo run --release</code></li>
+ <li>It prints progress and writes <code>..\data\strategy.json</code> when done.
+     Commit and push that file and the website picks it up.</li>
+</ol>
+<p class="muted">The run is long by design. Leave it going; it saves checkpoints as it
+goes, so stopping it does not lose the work.</p>
+
+</section>

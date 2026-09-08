@@ -1,0 +1,123 @@
+<!-- ================= RULES ================= -->
+<section class="panel" id="panel-rules">
+
+<h1 style="font-size:1.5rem">The rules of Short Deck</h1>
+<p class="muted">Also called 6+ Hold'em or Six Plus. Same shape as No Limit Hold'em, but
+four ranks are missing and two hand rankings change because of it.</p>
+
+<h2>1. The deck: 36 cards, not 52</h2>
+<p>Every <b>2, 3, 4 and 5</b> is removed. What is left is <b>6, 7, 8, 9, T, J, Q, K, A</b>
+in all four suits &mdash; nine ranks, 36 cards.</p>
+<div class="note">
+ <b>Why this changes everything:</b> you have removed 16 of the 20 lowest cards. Every
+ hand that gets dealt is made of big cards, so everybody connects with the board far
+ more often. Top pair is no longer a strong hand. Two pair is routine. The average
+ winning hand at showdown goes up a full rank compared to holdem.
+</div>
+
+<h3>The Ace is still both high and low</h3>
+<p>The Ace plays as the card below the 6, so <b>A-6-7-8-9 is a straight</b> &mdash; the
+short deck "wheel". It is the lowest straight, exactly as A-2-3-4-5 is in holdem.
+That means the Ace is part of two straights (A6789 and TJQKA), same as always.</p>
+
+<h2>2. Hand rankings (highest to lowest)</h2>
+<div class="scrollx">
+<table>
+<thead><tr><th>#</th><th>Hand</th><th class="num">Combos (36 cards)</th>
+<th class="num">Combos (52 cards)</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Straight flush</b></td><td class="num">24</td><td class="num">40</td><td class="muted">same</td></tr>
+<tr><td>2</td><td><b>Four of a kind</b></td><td class="num">288</td><td class="num">624</td><td class="muted">same</td></tr>
+<tr><td>3</td><td><b>Flush</b></td><td class="num">480</td><td class="num">5,108</td><td><span class="pill ok">MOVED UP</span></td></tr>
+<tr><td>4</td><td><b>Full house</b></td><td class="num">1,728</td><td class="num">3,744</td><td><span class="pill err">MOVED DOWN</span></td></tr>
+<tr><td>5</td><td><b>Straight</b></td><td class="num">6,120</td><td class="num">10,200</td><td class="muted">same</td></tr>
+<tr><td>6</td><td><b>Three of a kind</b></td><td class="num">16,128</td><td class="num">54,912</td><td class="muted">same</td></tr>
+<tr><td>7</td><td><b>Two pair</b></td><td class="num">36,288</td><td class="num">123,552</td><td class="muted">same</td></tr>
+<tr><td>8</td><td><b>One pair</b></td><td class="num">193,536</td><td class="num">1,098,240</td><td class="muted">same</td></tr>
+<tr><td>9</td><td><b>High card</b></td><td class="num">122,400</td><td class="num">1,302,540</td><td class="muted">same</td></tr>
+</tbody>
+</table>
+</div>
+<p class="muted">Combos = how many distinct 5-card hands of that type exist. Rarer beats
+more common. These are exact counts from full enumeration of all 376,992 five-card short
+deck hands, not estimates.</p>
+
+<h3>Why a flush beats a full house here</h3>
+<p>There are only <b>nine cards of each suit</b> instead of thirteen. Making five of them
+becomes hard: flushes fall from 5,108 combos to just <b>480</b>. Full houses only fall from
+3,744 to 1,728. So the flush flips from being roughly 1.4&times; <i>more</i> common than a
+boat to being <b>3.6&times; rarer</b> &mdash; and the ranking follows the rarity.</p>
+
+<h3>Why a straight still beats trips</h3>
+<p>This is the one people argue about, and the maths settles it. Yes, straights get easier
+to make relative to holdem &mdash; but trips get harder <i>faster</i>. Straights drop from
+10,200 to 6,120 combos (down 40%). Trips drop from 54,912 to 16,128 (down 71%). Trips
+remain <b>2.6&times; more common</b> than straights, so the straight stays above it.</p>
+<div class="note warn">
+ Some older home games rank trips above straights. This trainer does <b>not</b>, and that
+ is the correct Triton-style ruleset. If trips beat straights, open-ended straight draws
+ become close to worthless and the whole game distorts.
+</div>
+
+<h3>A quirk nobody re-ranks</h3>
+<p>Look at the bottom of the table: <b>high card (122,400) is actually rarer than one
+pair (193,536)</b> in short deck. By pure frequency logic, high card "should" beat a pair.
+No game does this &mdash; it would be unplayable &mdash; but it tells you something useful:
+<b>an unpaired, undrawing hand in short deck is close to worthless.</b> You will be paired
+or better most of the time just by accident.</p>
+
+<h2>3. The betting: antes, not blinds</h2>
+<p>Short deck is normally an <b>ante game</b>. Instead of two blinds, every player puts in
+one ante before the cards, and the button puts in an extra one.</p>
+<p>Heads-up, as played in this trainer:</p>
+<ul>
+ <li><b>Both players ante 1A.</b> ("A" = one ante, the unit of money here.)</li>
+ <li><b>The button posts an extra 1A button ante</b>, so the button is in for 2A total
+     and the opponent for 1A.</li>
+ <li><b>The starting pot is 3A.</b></li>
+ <li>Because the button has the biggest forced bet, the <b>button acts last preflop
+     as well as last on every later street.</b> This is the opposite of heads-up
+     holdem, where the button acts first before the flop.</li>
+</ul>
+<div class="note">
+ <b>Plain version:</b> the button here works like the big blind and the dealer button
+ combined. It costs more, but it has position on every single street. That is a real
+ edge, and it is why the non-button has to fight so hard preflop.
+</div>
+<p>After that it is standard: flop (3 cards), turn (1 card), river (1 card), no-limit
+betting on each, best five-card hand wins.</p>
+
+<h2>4. Stack rules used in this trainer</h2>
+<ul>
+ <li>Everyone starts at <b>50A</b>.</li>
+ <li>Fall below <b>10A</b> and you are automatically topped back up to 50A.</li>
+ <li>Rise above <b>100A</b> and the excess is skimmed off and banked &mdash; you keep the
+     money, but you sit back down with 100A.</li>
+</ul>
+<p>So live stacks always sit between 10A and 100A. This is deliberate: it means the solver
+only ever has to know how to play a known, bounded set of stack depths, which is what
+makes a solved bot possible on a laptop instead of a data centre.</p>
+
+<h2>5. Quick differences cheat sheet</h2>
+<div class="grid">
+ <div class="cardbox"><h4>Flush draws are weak</h4>
+  <p style="margin:0">Only 5 outs, not 9. There are just nine cards per suit and you can
+  see four of them. A flush draw is now worse than an open-ended straight draw.</p></div>
+ <div class="cardbox"><h4>Straight draws are strong</h4>
+  <p style="margin:0">Still 8 outs, and every out is worth more because fewer cards remain
+  unseen. Connectors go up in value; suited cards go down.</p></div>
+ <div class="cardbox"><h4>Top pair is not a made hand</h4>
+  <p style="margin:0">It is a bluff-catcher. Everyone has big cards, so everyone pairs the
+  big board cards.</p></div>
+ <div class="cardbox"><h4>Sets and straights are the money</h4>
+  <p style="margin:0">You flop a set more often (fewer cards to dodge) and it stays good
+  more often, since flushes are rare.</p></div>
+ <div class="cardbox"><h4>Aces run worse</h4>
+  <p style="margin:0">AA versus KK is 74.6% here, not 81%. Everything runs closer together,
+  so getting all-in preflop is less profitable than you think.</p></div>
+ <div class="cardbox"><h4>Rule of 3 and 6, not 2 and 4</h4>
+  <p style="margin:0">With only 31 unseen cards after the flop, each out is worth about 3%
+  per card instead of 2%. See the Strategy tab.</p></div>
+</div>
+
+</section>

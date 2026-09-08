@@ -1,0 +1,958 @@
+{
+ "generated": "2026-09-08",
+ "deck": 36,
+ "preflop_matchups": [
+  {
+   "a": "AA",
+   "b": "KK",
+   "eq_a": 74.64,
+   "eq_b": 25.36,
+   "tie": 1.41,
+   "note": "The classic cooler. In holdem this is 81%; short deck compresses it."
+  },
+  {
+   "a": "AA",
+   "b": "QQ",
+   "eq_a": 73.13,
+   "eq_b": 26.87,
+   "tie": 1.17,
+   "note": "Still dominant, but note how much closer it is than holdem."
+  },
+  {
+   "a": "AA",
+   "b": "AKs",
+   "eq_a": 80.89,
+   "eq_b": 19.11,
+   "tie": 5.05,
+   "note": "Domination is worth less when everything runs closer."
+  },
+  {
+   "a": "AA",
+   "b": "JTs",
+   "eq_a": 63.21,
+   "eq_b": 36.79,
+   "tie": 0.78,
+   "note": "Best pair vs a premium suited connector."
+  },
+  {
+   "a": "AA",
+   "b": "87s",
+   "eq_a": 68.54,
+   "eq_b": 31.46,
+   "tie": 1.36,
+   "note": "Even the worst connector holds a real share against aces."
+  },
+  {
+   "a": "KK",
+   "b": "AKo",
+   "eq_a": 55.67,
+   "eq_b": 44.33,
+   "tie": 3.44,
+   "note": "The classic pair-vs-overcard race."
+  },
+  {
+   "a": "QQ",
+   "b": "AKo",
+   "eq_a": 48.23,
+   "eq_b": 51.77,
+   "tie": 1.06,
+   "note": "Pair vs two overcards - a genuine coinflip in holdem."
+  },
+  {
+   "a": "QQ",
+   "b": "AKs",
+   "eq_a": 46.31,
+   "eq_b": 53.69,
+   "tie": 1.04,
+   "note": "Suitedness matters less here: only 5 flush outs, not 9."
+  },
+  {
+   "a": "JTs",
+   "b": "AJo",
+   "eq_a": 43.96,
+   "eq_b": 56.04,
+   "tie": 6.26,
+   "note": "Galvin's spot: connected+suited vs dominating top card."
+  },
+  {
+   "a": "AKo",
+   "b": "99",
+   "eq_a": 54.18,
+   "eq_b": 45.82,
+   "tie": 1.2,
+   "note": "Overcards vs a middle pair."
+  },
+  {
+   "a": "AKs",
+   "b": "99",
+   "eq_a": 55.95,
+   "eq_b": 44.05,
+   "tie": 1.18,
+   "note": "Same race with the suit added."
+  },
+  {
+   "a": "87s",
+   "b": "AKo",
+   "eq_a": 45.17,
+   "eq_b": 54.83,
+   "tie": 1.39,
+   "note": "Small connector vs big cards."
+  },
+  {
+   "a": "KQs",
+   "b": "99",
+   "eq_a": 55.94,
+   "eq_b": 44.06,
+   "tie": 1.16,
+   "note": "Two big connected cards vs a pair."
+  },
+  {
+   "a": "TT",
+   "b": "98s",
+   "eq_a": 70.81,
+   "eq_b": 29.19,
+   "tie": 2.0,
+   "note": "Pair vs connector directly under it."
+  },
+  {
+   "a": "AKo",
+   "b": "QJs",
+   "eq_a": 54.24,
+   "eq_b": 45.76,
+   "tie": 0.83,
+   "note": "Big cards vs connected suited."
+  },
+  {
+   "a": "77",
+   "b": "66",
+   "eq_a": 73.17,
+   "eq_b": 26.83,
+   "tie": 10.15,
+   "note": "Pair over pair, the small end."
+  },
+  {
+   "a": "AQo",
+   "b": "KJs",
+   "eq_a": 53.5,
+   "eq_b": 46.5,
+   "tie": 0.83,
+   "note": "Domination-free big card clash."
+  }
+ ],
+ "flop_matchups": [
+  {
+   "name": "Overpair vs open-ended straight draw",
+   "a": "AhAs",
+   "b": "JsTs",
+   "board": "9c8c6h",
+   "eq_a": 48.03,
+   "eq_b": 51.97,
+   "tie": 0.0,
+   "cat_a": "one pair",
+   "cat_b": "high card",
+   "outs_b": 8,
+   "b_ahead": false,
+   "outs_cards": "7c 7d 7h 7s Qc Qd Qh Qs",
+   "note": "JT needs a Q or a 7 to make the straight: 8 outs. Note the draw is the FAVOURITE. In holdem the aces would be about 57%."
+  },
+  {
+   "name": "Overpair vs flush draw",
+   "a": "AhAs",
+   "b": "KcQc",
+   "board": "9c8c6h",
+   "eq_a": 60.84,
+   "eq_b": 39.16,
+   "tie": 2.96,
+   "cat_a": "one pair",
+   "cat_b": "high card",
+   "outs_b": 5,
+   "b_ahead": false,
+   "outs_cards": "6c 7c Tc Jc Ac",
+   "note": "Same board, same aces, but the draw is now clubs. Only 5 clubs remain, and pairing the K or Q is worthless against aces. This is the short deck lesson in one row."
+  },
+  {
+   "name": "Overpair vs combo draw (flush + straight)",
+   "a": "AhAs",
+   "b": "JcTc",
+   "board": "9c8c6h",
+   "eq_a": 34.24,
+   "eq_b": 65.76,
+   "tie": 0.0,
+   "cat_a": "one pair",
+   "cat_b": "high card",
+   "outs_b": 11,
+   "b_ahead": false,
+   "outs_cards": "6c 7c 7d 7h 7s Qc Qd Qh Qs Kc Ac",
+   "note": "5 flush outs plus 8 straight outs, minus 2 counted twice, and the Qc and 7c make a STRAIGHT FLUSH. Now the draw is a clear favourite."
+  },
+  {
+   "name": "Overpair vs gutshot",
+   "a": "AhAs",
+   "b": "QsJs",
+   "board": "9c8c6h",
+   "eq_a": 69.21,
+   "eq_b": 30.79,
+   "tie": 1.97,
+   "cat_a": "one pair",
+   "cat_b": "high card",
+   "outs_b": 4,
+   "b_ahead": false,
+   "outs_cards": "Tc Td Th Ts",
+   "note": "Only the ten completes it: 4 outs. A gutshot is worth about 24% by the river here, against 16% in holdem."
+  },
+  {
+   "name": "Set vs straight-flush draw",
+   "a": "9d9h",
+   "b": "JcTc",
+   "board": "9c8c6h",
+   "eq_a": 48.77,
+   "eq_b": 51.23,
+   "tie": 0.0,
+   "cat_a": "trips",
+   "cat_b": "high card",
+   "outs_b": 11,
+   "b_ahead": false,
+   "outs_cards": "6c 7c 7d 7h 7s Qc Qd Qh Qs Kc Ac",
+   "note": "Galvin's spot. Even a flopped set is barely ahead of a big combo draw, because the straight-flush outs cannot be redrawn against."
+  },
+  {
+   "name": "Set vs open-ended straight draw",
+   "a": "7h7s",
+   "b": "JsTs",
+   "board": "7c9dQh",
+   "eq_a": 68.47,
+   "eq_b": 31.53,
+   "tie": 0.0,
+   "cat_a": "trips",
+   "cat_b": "high card",
+   "outs_b": 8,
+   "b_ahead": false,
+   "outs_cards": "8c 8d 8h 8s Kc Kd Kh Ks",
+   "note": "A set against a clean 8-outer. This is the shape you want your money in."
+  },
+  {
+   "name": "Set vs flush draw",
+   "a": "7h7s",
+   "b": "Tc9c",
+   "board": "7cQcAd",
+   "eq_a": 62.56,
+   "eq_b": 37.44,
+   "tie": 0.0,
+   "cat_a": "trips",
+   "cat_b": "high card",
+   "outs_b": 5,
+   "b_ahead": false,
+   "outs_cards": "6c 8c Jc Kc Ac",
+   "note": "Against a bare 5-out flush draw the set is a big favourite - and it can still fill up to beat the flush when it does come."
+  },
+  {
+   "name": "Top pair top kicker vs flush draw + overcards",
+   "a": "AhKd",
+   "b": "QcJc",
+   "board": "Ac7c6d",
+   "eq_a": 61.7,
+   "eq_b": 38.3,
+   "tie": 2.22,
+   "cat_a": "one pair",
+   "cat_b": "high card",
+   "outs_b": 5,
+   "b_ahead": false,
+   "outs_cards": "6c 8c 9c Tc Kc",
+   "note": "The draw has 5 flush outs plus a Q or J to pair, and is still a clear underdog. Top pair is not always thin here - against a DRAW it holds up fine."
+  },
+  {
+   "name": "Two overcards vs an underpair",
+   "a": "AhKd",
+   "b": "8s8c",
+   "board": "Jc9d6h",
+   "eq_a": 39.9,
+   "eq_b": 60.1,
+   "tie": 0.0,
+   "cat_a": "high card",
+   "cat_b": "one pair",
+   "outs_b": null,
+   "b_ahead": true,
+   "outs_cards": "",
+   "note": "Six outs and nothing else. In short deck the small pair is a solid favourite."
+  },
+  {
+   "name": "Overpair vs flopped two pair",
+   "a": "AhAs",
+   "b": "9s8d",
+   "board": "9c8c6h",
+   "eq_a": 49.26,
+   "eq_b": 50.74,
+   "tie": 5.91,
+   "cat_a": "one pair",
+   "cat_b": "two pair",
+   "outs_b": null,
+   "b_ahead": true,
+   "outs_cards": "",
+   "note": "The nightmare. Two pair flops constantly in short deck because every hand is made of big connected cards."
+  }
+ ],
+ "outs_table": [
+  {
+   "outs": 1,
+   "sd_one_card": 3.2,
+   "sd_two_cards": 6.5,
+   "sd_rule": 3,
+   "sd_rule2": 6,
+   "he_one_card": 2.1,
+   "he_two_cards": 4.3,
+   "he_rule": 2,
+   "he_rule2": 4
+  },
+  {
+   "outs": 2,
+   "sd_one_card": 6.5,
+   "sd_two_cards": 12.7,
+   "sd_rule": 6,
+   "sd_rule2": 12,
+   "he_one_card": 4.3,
+   "he_two_cards": 8.4,
+   "he_rule": 4,
+   "he_rule2": 8
+  },
+  {
+   "outs": 3,
+   "sd_one_card": 9.7,
+   "sd_two_cards": 18.7,
+   "sd_rule": 9,
+   "sd_rule2": 18,
+   "he_one_card": 6.4,
+   "he_two_cards": 12.5,
+   "he_rule": 6,
+   "he_rule2": 12
+  },
+  {
+   "outs": 4,
+   "sd_one_card": 12.9,
+   "sd_two_cards": 24.5,
+   "sd_rule": 12,
+   "sd_rule2": 24,
+   "he_one_card": 8.5,
+   "he_two_cards": 16.5,
+   "he_rule": 8,
+   "he_rule2": 16
+  },
+  {
+   "outs": 5,
+   "sd_one_card": 16.1,
+   "sd_two_cards": 30.1,
+   "sd_rule": 15,
+   "sd_rule2": 30,
+   "he_one_card": 10.6,
+   "he_two_cards": 20.4,
+   "he_rule": 10,
+   "he_rule2": 20
+  },
+  {
+   "outs": 6,
+   "sd_one_card": 19.4,
+   "sd_two_cards": 35.5,
+   "sd_rule": 18,
+   "sd_rule2": 36,
+   "he_one_card": 12.8,
+   "he_two_cards": 24.1,
+   "he_rule": 12,
+   "he_rule2": 24
+  },
+  {
+   "outs": 7,
+   "sd_one_card": 22.6,
+   "sd_two_cards": 40.6,
+   "sd_rule": 21,
+   "sd_rule2": 42,
+   "he_one_card": 14.9,
+   "he_two_cards": 27.8,
+   "he_rule": 14,
+   "he_rule2": 28
+  },
+  {
+   "outs": 8,
+   "sd_one_card": 25.8,
+   "sd_two_cards": 45.6,
+   "sd_rule": 24,
+   "sd_rule2": 48,
+   "he_one_card": 17.0,
+   "he_two_cards": 31.5,
+   "he_rule": 16,
+   "he_rule2": 32
+  },
+  {
+   "outs": 9,
+   "sd_one_card": 29.0,
+   "sd_two_cards": 50.3,
+   "sd_rule": 27,
+   "sd_rule2": 54,
+   "he_one_card": 19.1,
+   "he_two_cards": 35.0,
+   "he_rule": 18,
+   "he_rule2": 36
+  },
+  {
+   "outs": 10,
+   "sd_one_card": 32.3,
+   "sd_two_cards": 54.8,
+   "sd_rule": 30,
+   "sd_rule2": 60,
+   "he_one_card": 21.3,
+   "he_two_cards": 38.4,
+   "he_rule": 20,
+   "he_rule2": 40
+  },
+  {
+   "outs": 11,
+   "sd_one_card": 35.5,
+   "sd_two_cards": 59.1,
+   "sd_rule": 33,
+   "sd_rule2": 66,
+   "he_one_card": 23.4,
+   "he_two_cards": 41.7,
+   "he_rule": 22,
+   "he_rule2": 44
+  },
+  {
+   "outs": 12,
+   "sd_one_card": 38.7,
+   "sd_two_cards": 63.2,
+   "sd_rule": 36,
+   "sd_rule2": 72,
+   "he_one_card": 25.5,
+   "he_two_cards": 45.0,
+   "he_rule": 24,
+   "he_rule2": 48
+  },
+  {
+   "outs": 13,
+   "sd_one_card": 41.9,
+   "sd_two_cards": 67.1,
+   "sd_rule": 39,
+   "sd_rule2": 78,
+   "he_one_card": 27.7,
+   "he_two_cards": 48.1,
+   "he_rule": 26,
+   "he_rule2": 52
+  },
+  {
+   "outs": 14,
+   "sd_one_card": 45.2,
+   "sd_two_cards": 70.8,
+   "sd_rule": 42,
+   "sd_rule2": 84,
+   "he_one_card": 29.8,
+   "he_two_cards": 51.2,
+   "he_rule": 28,
+   "he_rule2": 56
+  },
+  {
+   "outs": 15,
+   "sd_one_card": 48.4,
+   "sd_two_cards": 74.2,
+   "sd_rule": 45,
+   "sd_rule2": 90,
+   "he_one_card": 31.9,
+   "he_two_cards": 54.1,
+   "he_rule": 30,
+   "he_rule2": 60
+  }
+ ],
+ "draw_outs": [
+  {
+   "draw": "Flush draw",
+   "sd_outs": 5,
+   "he_outs": 9,
+   "why": "Only 9 cards of each suit exist (6 through A). You hold 2 and the board shows 2, so just 5 are left."
+  },
+  {
+   "draw": "Open-ended straight draw",
+   "sd_outs": 8,
+   "he_outs": 8,
+   "why": "Unchanged - two ranks x four suits. This is why straight draws overtake flush draws in short deck."
+  },
+  {
+   "draw": "Gutshot",
+   "sd_outs": 4,
+   "he_outs": 4,
+   "why": "Unchanged, but each out is worth ~50% more."
+  },
+  {
+   "draw": "Flush draw + open-ender",
+   "sd_outs": 11,
+   "he_outs": 15,
+   "why": "5 flush outs + 8 straight outs, minus 2 counted twice."
+  },
+  {
+   "draw": "Two overcards",
+   "sd_outs": 6,
+   "he_outs": 6,
+   "why": "Unchanged count, higher value per out."
+  },
+  {
+   "draw": "Set looking to fill up",
+   "sd_outs": 7,
+   "he_outs": 7,
+   "why": "Board pairs or you hit quads."
+  }
+ ],
+ "preflop_ranking": [
+  {
+   "hand": "AA",
+   "eq_vs_random": 72.96,
+   "rank": 1
+  },
+  {
+   "hand": "KK",
+   "eq_vs_random": 69.32,
+   "rank": 2
+  },
+  {
+   "hand": "QQ",
+   "eq_vs_random": 66.4,
+   "rank": 3
+  },
+  {
+   "hand": "JJ",
+   "eq_vs_random": 63.69,
+   "rank": 4
+  },
+  {
+   "hand": "TT",
+   "eq_vs_random": 61.31,
+   "rank": 5
+  },
+  {
+   "hand": "AKs",
+   "eq_vs_random": 61.03,
+   "rank": 6
+  },
+  {
+   "hand": "AQs",
+   "eq_vs_random": 60.12,
+   "rank": 7
+  },
+  {
+   "hand": "AKo",
+   "eq_vs_random": 59.33,
+   "rank": 8
+  },
+  {
+   "hand": "AJs",
+   "eq_vs_random": 59.19,
+   "rank": 9
+  },
+  {
+   "hand": "KQs",
+   "eq_vs_random": 58.61,
+   "rank": 10
+  },
+  {
+   "hand": "AQo",
+   "eq_vs_random": 58.43,
+   "rank": 11
+  },
+  {
+   "hand": "KJs",
+   "eq_vs_random": 58.38,
+   "rank": 12
+  },
+  {
+   "hand": "ATs",
+   "eq_vs_random": 57.97,
+   "rank": 13
+  },
+  {
+   "hand": "KTs",
+   "eq_vs_random": 57.56,
+   "rank": 14
+  },
+  {
+   "hand": "QJs",
+   "eq_vs_random": 57.52,
+   "rank": 15
+  },
+  {
+   "hand": "AJo",
+   "eq_vs_random": 57.46,
+   "rank": 16
+  },
+  {
+   "hand": "KQo",
+   "eq_vs_random": 57.28,
+   "rank": 17
+  },
+  {
+   "hand": "QTs",
+   "eq_vs_random": 56.71,
+   "rank": 18
+  },
+  {
+   "hand": "JTs",
+   "eq_vs_random": 56.65,
+   "rank": 19
+  },
+  {
+   "hand": "99",
+   "eq_vs_random": 56.34,
+   "rank": 20
+  },
+  {
+   "hand": "ATo",
+   "eq_vs_random": 56.3,
+   "rank": 21
+  },
+  {
+   "hand": "KJo",
+   "eq_vs_random": 56.06,
+   "rank": 22
+  },
+  {
+   "hand": "QJo",
+   "eq_vs_random": 55.95,
+   "rank": 23
+  },
+  {
+   "hand": "A9s",
+   "eq_vs_random": 55.8,
+   "rank": 24
+  },
+  {
+   "hand": "KTo",
+   "eq_vs_random": 55.6,
+   "rank": 25
+  },
+  {
+   "hand": "JTo",
+   "eq_vs_random": 55.34,
+   "rank": 26
+  },
+  {
+   "hand": "QTo",
+   "eq_vs_random": 55.18,
+   "rank": 27
+  },
+  {
+   "hand": "A9o",
+   "eq_vs_random": 54.85,
+   "rank": 28
+  },
+  {
+   "hand": "A8s",
+   "eq_vs_random": 54.57,
+   "rank": 29
+  },
+  {
+   "hand": "K9s",
+   "eq_vs_random": 53.04,
+   "rank": 30
+  },
+  {
+   "hand": "A8o",
+   "eq_vs_random": 52.93,
+   "rank": 31
+  },
+  {
+   "hand": "T9s",
+   "eq_vs_random": 52.51,
+   "rank": 32
+  },
+  {
+   "hand": "A7s",
+   "eq_vs_random": 52.46,
+   "rank": 33
+  },
+  {
+   "hand": "J9s",
+   "eq_vs_random": 52.45,
+   "rank": 34
+  },
+  {
+   "hand": "Q9s",
+   "eq_vs_random": 52.4,
+   "rank": 35
+  },
+  {
+   "hand": "K9o",
+   "eq_vs_random": 51.52,
+   "rank": 36
+  },
+  {
+   "hand": "T9o",
+   "eq_vs_random": 51.2,
+   "rank": 37
+  },
+  {
+   "hand": "Q9o",
+   "eq_vs_random": 50.82,
+   "rank": 38
+  },
+  {
+   "hand": "A7o",
+   "eq_vs_random": 50.76,
+   "rank": 39
+  },
+  {
+   "hand": "J9o",
+   "eq_vs_random": 50.32,
+   "rank": 40
+  },
+  {
+   "hand": "A6s",
+   "eq_vs_random": 50.29,
+   "rank": 41
+  },
+  {
+   "hand": "88",
+   "eq_vs_random": 50.04,
+   "rank": 42
+  },
+  {
+   "hand": "K8s",
+   "eq_vs_random": 50.01,
+   "rank": 43
+  },
+  {
+   "hand": "T8s",
+   "eq_vs_random": 49.44,
+   "rank": 44
+  },
+  {
+   "hand": "J8s",
+   "eq_vs_random": 49.28,
+   "rank": 45
+  },
+  {
+   "hand": "Q8s",
+   "eq_vs_random": 49.13,
+   "rank": 46
+  },
+  {
+   "hand": "98s",
+   "eq_vs_random": 48.99,
+   "rank": 47
+  },
+  {
+   "hand": "K7s",
+   "eq_vs_random": 48.53,
+   "rank": 48
+  },
+  {
+   "hand": "A6o",
+   "eq_vs_random": 48.03,
+   "rank": 49
+  },
+  {
+   "hand": "K8o",
+   "eq_vs_random": 47.91,
+   "rank": 50
+  },
+  {
+   "hand": "T8o",
+   "eq_vs_random": 47.6,
+   "rank": 51
+  },
+  {
+   "hand": "Q8o",
+   "eq_vs_random": 47.38,
+   "rank": 52
+  },
+  {
+   "hand": "98o",
+   "eq_vs_random": 47.15,
+   "rank": 53
+  },
+  {
+   "hand": "J8o",
+   "eq_vs_random": 47.15,
+   "rank": 54
+  },
+  {
+   "hand": "K6s",
+   "eq_vs_random": 46.51,
+   "rank": 55
+  },
+  {
+   "hand": "97s",
+   "eq_vs_random": 46.44,
+   "rank": 56
+  },
+  {
+   "hand": "K7o",
+   "eq_vs_random": 46.05,
+   "rank": 57
+  },
+  {
+   "hand": "T7s",
+   "eq_vs_random": 45.76,
+   "rank": 58
+  },
+  {
+   "hand": "J7s",
+   "eq_vs_random": 45.73,
+   "rank": 59
+  },
+  {
+   "hand": "Q7s",
+   "eq_vs_random": 45.55,
+   "rank": 60
+  },
+  {
+   "hand": "77",
+   "eq_vs_random": 44.51,
+   "rank": 61
+  },
+  {
+   "hand": "Q6s",
+   "eq_vs_random": 44.5,
+   "rank": 62
+  },
+  {
+   "hand": "Q7o",
+   "eq_vs_random": 44.2,
+   "rank": 63
+  },
+  {
+   "hand": "97o",
+   "eq_vs_random": 44.08,
+   "rank": 64
+  },
+  {
+   "hand": "K6o",
+   "eq_vs_random": 43.97,
+   "rank": 65
+  },
+  {
+   "hand": "87s",
+   "eq_vs_random": 43.84,
+   "rank": 66
+  },
+  {
+   "hand": "T7o",
+   "eq_vs_random": 43.74,
+   "rank": 67
+  },
+  {
+   "hand": "J7o",
+   "eq_vs_random": 42.97,
+   "rank": 68
+  },
+  {
+   "hand": "J6s",
+   "eq_vs_random": 42.37,
+   "rank": 69
+  },
+  {
+   "hand": "T6s",
+   "eq_vs_random": 42.18,
+   "rank": 70
+  },
+  {
+   "hand": "96s",
+   "eq_vs_random": 42.11,
+   "rank": 71
+  },
+  {
+   "hand": "Q6o",
+   "eq_vs_random": 41.93,
+   "rank": 72
+  },
+  {
+   "hand": "87o",
+   "eq_vs_random": 41.49,
+   "rank": 73
+  },
+  {
+   "hand": "86s",
+   "eq_vs_random": 40.42,
+   "rank": 74
+  },
+  {
+   "hand": "96o",
+   "eq_vs_random": 40.13,
+   "rank": 75
+  },
+  {
+   "hand": "T6o",
+   "eq_vs_random": 39.87,
+   "rank": 76
+  },
+  {
+   "hand": "J6o",
+   "eq_vs_random": 39.28,
+   "rank": 77
+  },
+  {
+   "hand": "66",
+   "eq_vs_random": 38.86,
+   "rank": 78
+  },
+  {
+   "hand": "76s",
+   "eq_vs_random": 37.82,
+   "rank": 79
+  },
+  {
+   "hand": "86o",
+   "eq_vs_random": 37.65,
+   "rank": 80
+  },
+  {
+   "hand": "76o",
+   "eq_vs_random": 35.31,
+   "rank": 81
+  }
+ ],
+ "preflop_ranking_samples": 40000,
+ "hand_frequencies": [
+  {
+   "cat": "Straight flush",
+   "sd": 24,
+   "he": 40
+  },
+  {
+   "cat": "Four of a kind",
+   "sd": 288,
+   "he": 624
+  },
+  {
+   "cat": "Flush",
+   "sd": 480,
+   "he": 5108
+  },
+  {
+   "cat": "Full house",
+   "sd": 1728,
+   "he": 3744
+  },
+  {
+   "cat": "Straight",
+   "sd": 6120,
+   "he": 10200
+  },
+  {
+   "cat": "Three of a kind",
+   "sd": 16128,
+   "he": 54912
+  },
+  {
+   "cat": "Two pair",
+   "sd": 36288,
+   "he": 123552
+  },
+  {
+   "cat": "One pair",
+   "sd": 193536,
+   "he": 1098240
+  },
+  {
+   "cat": "High card",
+   "sd": 122400,
+   "he": 1302540
+  }
+ ],
+ "total_5card": {
+  "sd": 376992,
+  "he": 2598960
+ }
+}

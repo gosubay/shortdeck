@@ -1,0 +1,124 @@
+<!-- ================= STRATEGY ================= -->
+<section class="panel" id="panel-strategy">
+
+<h1 style="font-size:1.5rem">How to actually play this game</h1>
+<p class="muted">Every number on this page was computed by exhaustive enumeration of the
+36-card deck, not estimated. The preflop hand ranking uses Monte Carlo simulation.</p>
+
+<h2>1. The one thing to understand: equities run close</h2>
+<p>Take out the 2s through 5s and every hand gets better. But your opponent's hand gets
+better too, and it gets better by roughly the same amount. The result is that the gap
+between a great hand and a mediocre hand <b>shrinks</b>.</p>
+<div id="sMatchups"></div>
+<div class="note">
+ <b>What this means at the table:</b> pushing a small preflop edge all-in is worth much
+ less than in holdem. AA versus KK pays you 74.6% instead of 81%. QQ is an actual
+ underdog to AK. Because nothing dominates, <b>post-flop skill and position matter more,
+ and pre-flop all-in gambling matters less.</b>
+</div>
+
+<h2>2. The rule of 3 and 6 (not 2 and 4)</h2>
+<p>In holdem after the flop there are 47 cards you have not seen, so each out is worth
+about 1/47 = 2.1% per card. Multiply outs by 2 for one card, by 4 for two cards.</p>
+<p>In short deck there are only <b>31 unseen cards</b> after the flop (36 minus your 2
+minus the 3 on the board). Each out is worth 1/31 = <b>3.2% per card</b>. So:</p>
+<div class="grid" style="margin:1em 0">
+ <div class="cardbox"><h4>Rule of 3</h4><p style="margin:0">One card to come (turn to
+ river): <b>outs &times; 3</b>. With 30 unseen it is actually 3.3% per out, so this
+ slightly under-counts &mdash; which is the safe direction.</p></div>
+ <div class="cardbox"><h4>Rule of 6</h4><p style="margin:0">Two cards to come (flop to
+ river): <b>outs &times; 6</b>. Accurate up to about 6 outs, then it starts to
+ over-count. See the table.</p></div>
+</div>
+<div id="sOuts"></div>
+<div class="note warn">
+ <b>Where the rule of 6 breaks:</b> it is good to about 6 outs and then drifts high, the
+ same way the rule of 4 does in holdem but worse. At 8 outs it says 48% and the truth is
+ 45.6%. At 12 outs it says 72% and the truth is 63.2%. For big draws, use the rule of 3
+ twice and subtract a little, or just remember: <b>a big combo draw is around 60-65%,
+ never 70%+.</b>
+</div>
+
+<h2>3. Flush draws are weak. Straight draws are strong.</h2>
+<p>This is the single biggest adjustment coming from holdem, and it is pure counting.</p>
+<div id="sDraws"></div>
+<p>There are only <b>nine cards in each suit</b>. If you hold two of a suit and two more
+are on the flop, that is four of the nine accounted for &mdash; <b>five left</b>, not nine.
+Meanwhile an open-ended straight draw still has its full eight outs, because straights
+depend on ranks and no rank was removed, only whole low ranks.</p>
+<div class="note">
+ <b>Practical version:</b> stop paying big prices for flush draws. Start paying them for
+ open-enders. A flush draw in short deck is worth roughly what a gutshot-plus is worth in
+ holdem. And when you DO make a flush, it is close to unbeatable &mdash; it beats a full
+ house.
+</div>
+
+<h2>4. Real flop match-ups</h2>
+<p>All ten spots below were solved exactly &mdash; every possible turn and river was
+enumerated. The first four use the <b>same aces on the same board</b> and change only the
+draw, so you can see exactly what each type of draw is worth.</p>
+<div id="sFlops"></div>
+
+<h2>5. The 81 starting hands, ranked</h2>
+<p>Short deck has 630 two-card combinations, but before a board exists the suits are
+interchangeable, so there are exactly <b>81 strategically different starting hands</b>
+(9 pairs, 36 suited, 36 offsuit). Here they are ranked by equity against a random hand.</p>
+<h3>The pair cliff</h3>
+<p>This is the most striking thing in the whole ranking. Watch what happens to pocket
+pairs:</p>
+<div class="scrollx"><table><thead><tr><th>Hand</th><th class="num">Rank (of 81)</th>
+<th class="num">Equity vs random</th></tr></thead><tbody>
+<tr><td><b>AA</b></td><td class="num">1</td><td class="num">73.0%</td></tr>
+<tr><td><b>KK</b></td><td class="num">2</td><td class="num">69.3%</td></tr>
+<tr><td><b>QQ</b></td><td class="num">3</td><td class="num">66.4%</td></tr>
+<tr><td><b>JJ</b></td><td class="num">4</td><td class="num">63.7%</td></tr>
+<tr><td><b>TT</b></td><td class="num">5</td><td class="num">61.3%</td></tr>
+<tr><td><b>99</b></td><td class="num">20</td><td class="num">56.3%</td></tr>
+<tr><td><b>88</b></td><td class="num">42</td><td class="num">50.0%</td></tr>
+<tr><td><b>77</b></td><td class="num">61</td><td class="num">44.5%</td></tr>
+<tr><td><b>66</b></td><td class="num">78</td><td class="num">38.9%</td></tr>
+</tbody></table></div>
+<p>The top five pairs occupy the top five slots outright. Then it falls off a cliff:
+<b>66 is 78th out of 81 hands.</b> In holdem, 22 keeps value because it can flop a set
+that nobody sees coming. In short deck, 66 makes the worst set, the worst straight, is
+dominated by every other pair, and there are only three ranks below the 9 to hide behind.
+<b>Small pairs are close to unplayable here</b> and that surprises almost everyone.</p>
+<div class="note warn">
+ <b>One honest caveat about this list.</b> "Equity against a random hand" measures raw
+ strength in an all-in, not how <i>playable</i> a hand is. It systematically flatters big
+ offsuit cards and punishes connectors: 76s shows up 79th, but a hand that makes straights
+ and flushes plays far better after the flop than a hand like J6o that can only make one
+ weak pair. Use this table to understand raw equity. Use the solver's actual ranges (GTO
+ Solver tab) to decide what to play.
+</div>
+<div id="sRanking"></div>
+
+<h2>6. Core principles the solver plays by</h2>
+<div class="note bad" id="solverPrinciplesPending">
+ <b>Waiting on the solver run.</b> This section will be written from the solver's actual
+ output once the CFR run finishes &mdash; not from received poker wisdom. The principles
+ below are the ones that follow directly from the maths above and are safe to rely on now.
+</div>
+<div class="grid">
+ <div class="cardbox"><h4>Play more hands, fold less</h4>
+  <p style="margin:0">Every hand is closer to every other hand. The gap between the best
+  and worst starting hand is far smaller than in holdem, so tight-passive is a losing
+  style here.</p></div>
+ <div class="cardbox"><h4>Position is worth more</h4>
+  <p style="margin:0">Because equities run close, the hand that acts last wins more of the
+  marginal pots. The button posts the extra ante for exactly this reason.</p></div>
+ <div class="cardbox"><h4>Respect the flush</h4>
+  <p style="margin:0">Flushes beat full houses and only 480 exist. If a lot of money goes
+  in on a three-suited board, someone has it.</p></div>
+ <div class="cardbox"><h4>Top pair is a bluff-catcher</h4>
+  <p style="margin:0">Not a value hand. Everyone holds big cards, so everyone pairs big
+  boards. Stacking off with top pair is the classic short deck leak.</p></div>
+ <div class="cardbox"><h4>Sets are worth a stack</h4>
+  <p style="margin:0">You flop them more often and they hold up more often, because the
+  main thing that beats them - a flush - almost never comes.</p></div>
+ <div class="cardbox"><h4>Draws are betting hands</h4>
+  <p style="margin:0">An open-ender is often the mathematical favourite against a made
+  overpair. It should be raising, not calling.</p></div>
+</div>
+
+</section>
