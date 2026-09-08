@@ -62,9 +62,6 @@ undertrained export scored -75.45 A/100 on the same test.
 Also still outstanding from the agreed scope: the **~40 card-perfect benchmark flop
 solves** for the Strategy tab (the "High + teaching solves" tier). Not started.
 
-Also still outstanding from the agreed scope: the **~40 card-perfect benchmark flop
-solves** for the Strategy tab (the "High + teaching solves" tier). Not started.
-
 ---
 
 ## How to work on this
